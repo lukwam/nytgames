@@ -2,7 +2,7 @@
 steps:
   - id: build-image
     name: gcr.io/cloud-builders/docker
-    dir: services/nytgames
+    dir: api
     entrypoint: docker
     args:
       - build
@@ -12,7 +12,7 @@ steps:
 
   - id: tag-image
     name: gcr.io/cloud-builders/docker
-    dir: services/nytgames
+    dir: api
     entrypoint: docker
     args:
       - tag
@@ -21,7 +21,7 @@ steps:
 
   - id: push-latest-image
     name: gcr.io/cloud-builders/docker
-    dir: services/nytgames
+    dir: api
     entrypoint: docker
     args:
       - push
@@ -29,7 +29,7 @@ steps:
 
   - id: push-shortsha-image
     name: gcr.io/cloud-builders/docker
-    dir: services/nytgames
+    dir: api
     entrypoint: docker
     args:
       - push
@@ -37,7 +37,7 @@ steps:
 
   - id: deploy-run-service
     name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-    dir: services/nytgames
+    dir: api
     entrypoint: gcloud
     args:
       - run
