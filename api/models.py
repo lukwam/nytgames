@@ -116,6 +116,7 @@ class CrosswordMini(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# pylint: disable=invalid-name
 class CrosswordPublishType(str, Enum):
     """Crossword Publish Type."""
     daily = "daily"
@@ -240,8 +241,8 @@ class SpellingBeeGameDay(BaseModel):
 
 class SpellingBeeGamePastPuzzles(BaseModel):
     """Spelling Bee Game Past Puzzles."""
-    today: dict
-    yesterday: dict
+    today: SpellingBeeGameDay
+    yesterday: SpellingBeeGameDay
     lastWeek: list
     thisWeek: list
 
@@ -250,11 +251,11 @@ class SpellingBeeGamePastPuzzles(BaseModel):
 
 class SpellingBeeGameData(BaseModel):
     """Spelling Bee Game Data."""
-    # today: SpellingBeeGameDay
-    # yesterday: SpellingBeeGameDay
+    today: SpellingBeeGameDay
+    yesterday: SpellingBeeGameDay
     pastPuzzles: SpellingBeeGamePastPuzzles
 
-    # model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid")
 
 
 class SpellingBeeLongestWord(BaseModel):
