@@ -1,0 +1,54 @@
+---
+steps:
+  - id: build-image
+    name: gcr.io/cloud-builders/docker
+    dir: services/nytgames
+    entrypoint: docker
+    args:
+      - build
+      - -t
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docker/nytgames:latest
+      - .
+
+  - id: tag-image
+    name: gcr.io/cloud-builders/docker
+    dir: services/nytgames
+    entrypoint: docker
+    args:
+      - tag
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docker/nytgames:latest
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docker/nytgames:$SHORT_SHA
+
+  - id: push-latest-image
+    name: gcr.io/cloud-builders/docker
+    dir: services/nytgames
+    entrypoint: docker
+    args:
+      - push
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docker/nytgames:latest
+
+  - id: push-shortsha-image
+    name: gcr.io/cloud-builders/docker
+    dir: services/nytgames
+    entrypoint: docker
+    args:
+      - push
+      - us-central1-docker.pkg.dev/$PROJECT_ID/docker/nytgames:$SHORT_SHA
+
+  - id: deploy-run-service
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    dir: services/nytgames
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - nytgames
+      - --allow-unauthenticated
+      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/docker/nytgames:$SHORT_SHA
+      - --memory=256Mi
+      - --platform=managed
+      - --region=us-central1
+      - --service-account=nytgames-service@$PROJECT_ID.iam.gserviceaccount.com
+      - --set-env-vars=ENV=$_ENV
+      - --set-env-vars=GOOGLE_CLOUD_PROJECT=$PROJECT_ID
+      - --timeout=30s
