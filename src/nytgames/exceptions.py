@@ -20,6 +20,17 @@ class NYTGamesAuthenticationError(NYTGamesHTTPError):
     """
 
 
+class NYTGamesRateLimitError(NYTGamesHTTPError):
+    """NYT is rate limiting requests (HTTP 429), even after retrying.
+
+    `retry_after` is how many seconds NYT asked to wait, if it said.
+    """
+
+    def __init__(self, *args, retry_after: float | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.retry_after = retry_after
+
+
 class NYTGamesNotFoundError(NYTGamesHTTPError):
     """NYT has no data for the request (HTTP 404), e.g. a date with no puzzle."""
 
