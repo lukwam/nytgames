@@ -171,3 +171,27 @@ def test_old_stats_model_names_still_import():
     from nytgames.models import Player
     from nytgames.models import SpellingBeePlayer
     assert SpellingBeePlayer is Player
+
+
+def test_connections_picture_puzzle(session):
+    """Picture puzzle cards have image fields instead of content."""
+    image_card = {
+        "position": 4,
+        "image_url": "https://games-phoenix-assets-prd.s3.us-east-1.amazonaws.com/slot-machine.svg",
+        "image_alt_text": "SLOT MACHINE",
+    }
+    session.get.return_value.json.return_value = {
+        "id": 1,
+        "status": "OK",
+        "print_date": "2026-05-06",
+        "editor": "Wyna Liu",
+        "illustrator": "Glenn Harvey",
+        "categories": [{"title": "Things", "cards": [image_card, {"content": "BELL", "position": 0}]}],
+    }
+    puzzle = NYTGamesClient(session=session).connections("2026-05-06")
+    image, word = puzzle.categories[0].cards
+    assert puzzle.illustrator == "Glenn Harvey"
+    assert image.content is None
+    assert image.image_alt_text == "SLOT MACHINE"
+    assert image.text == "SLOT MACHINE"
+    assert word.text == "BELL"
