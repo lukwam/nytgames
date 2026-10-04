@@ -23,6 +23,8 @@ versions may include breaking changes.
   time, NYT's update time, the nytimes-games version and a SHA-256 hash.
   With `--overwrite`, puzzles NYT has changed keep their previous version
   in `revisions/` and are reported as changed.
+- Examples: a Letter Boxed solver, clue reuse across crosswords, and solve
+  times by weekday and constructor.
 - A README capability matrix: what each method returns and which fields are
   spoilers.
 - Retries with exponential backoff for failed connections, timeouts, rate
