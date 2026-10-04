@@ -172,6 +172,7 @@ HTTP errors from NYT are raised as `NYTGamesHTTPError`, a subclass of
 |---|---|
 | `NYTGamesAuthenticationError` | 401 or 403, usually a missing or expired `NYT-S` cookie |
 | `NYTGamesNotFoundError` | 404, for example a date with no puzzle |
+| `NYTGamesRateLimitError` | 429 after retrying; `retry_after` has NYT's suggested wait, if any |
 | `NYTGamesHTTPError` | any other HTTP error |
 | `NYTGamesParseError` | an NYT page didn't contain the expected game data (a `ValueError`) |
 
@@ -183,6 +184,26 @@ try:
 except NYTGamesNotFoundError:
     print("No puzzle that day")
 ```
+
+### Network behavior
+
+Failed connections, timeouts, rate limits (429) and NYT server errors are
+retried up to 3 times with exponential backoff, honoring NYT's `Retry-After`
+header. Adjust with `NYTGamesClient(retries=5, backoff=1.0, timeout=60)`, or
+turn retries off with `retries=0`.
+
+You can pass your own `requests` session, used as is (without the client's
+retries). For example, to cache responses with
+[requests-cache](https://requests-cache.readthedocs.io/):
+
+```python
+import requests_cache
+
+session = requests_cache.CachedSession("nyt_cache", expire_after=3600)
+client = NYTGamesClient(session=session)
+```
+
+Cookies are sent only to NYT (or the `base_url` you set) and are never logged.
 
 ## Models
 

@@ -14,6 +14,7 @@ from typer.testing import CliRunner
 
 from nytgames import NYTGamesAuthenticationError
 from nytgames import NYTGamesNotFoundError
+from nytgames import NYTGamesRateLimitError
 from nytgames.cli import dates
 from nytgames.cli import app as cli_main
 from nytgames.cli import output
@@ -138,6 +139,7 @@ def test_bad_date_is_a_usage_error(client):
 @pytest.mark.parametrize("error,message", [
     (NYTGamesNotFoundError("404", response=mock.Mock(status_code=404)), "no puzzle"),
     (NYTGamesAuthenticationError("403", response=mock.Mock(status_code=403)), "nytg auth login"),
+    (NYTGamesRateLimitError("429", response=mock.Mock(status_code=429), retry_after=30), "Try again in 30 seconds"),
 ])
 def test_main_reports_nyt_errors(client, monkeypatch, capsys, error, message):
     client.wordle.side_effect = error

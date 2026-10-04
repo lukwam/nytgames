@@ -15,6 +15,7 @@ import typer
 from nytgames import NYTGamesAuthenticationError
 from nytgames import NYTGamesNotFoundError
 from nytgames import NYTGamesParseError
+from nytgames import NYTGamesRateLimitError
 from nytgames import __version__
 from nytgames.cli import archive
 from nytgames.cli import output
@@ -108,6 +109,10 @@ def run(app: typer.Typer) -> None:
             "[red]NYT rejected the request.[/red] This needs your NYT cookies, which are missing "
             f"or have expired. Run [bold]{name} auth login[/bold] or set NYT_COOKIES."
         )
+        sys.exit(1)
+    except NYTGamesRateLimitError as err:
+        wait = f" Try again in {err.retry_after:g} seconds." if err.retry_after else " Try again later."
+        output.err_console.print(f"[red]NYT is rate limiting requests.[/red]{wait}")
         sys.exit(1)
     except NYTGamesNotFoundError:
         output.err_console.print("[red]Not found.[/red] NYT has no puzzle for that date.")

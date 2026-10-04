@@ -8,6 +8,8 @@ from typing import Iterable
 from typing import Mapping
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from bs4 import BeautifulSoup
 
 from nytgames import __version__
@@ -15,6 +17,7 @@ from nytgames.exceptions import NYTGamesAuthenticationError
 from nytgames.exceptions import NYTGamesHTTPError
 from nytgames.exceptions import NYTGamesNotFoundError
 from nytgames.exceptions import NYTGamesParseError
+from nytgames.exceptions import NYTGamesRateLimitError
 from nytgames.models import ArchiveGame
 from nytgames.models import ArchivePuzzle
 from nytgames.models import ConnectionsPuzzle
@@ -72,6 +75,32 @@ def parse_cookies(cookies: Cookies) -> dict[str, str]:
     return {cookie["name"]: cookie["value"] for cookie in cookies}
 
 
+def retrying_session(retries: int = 3, backoff: float = 0.5) -> requests.Session:
+    """Return a session that retries failed requests with exponential backoff."""
+    session = requests.Session()
+    if retries:
+        retry = Retry(
+            total=retries,
+            backoff_factor=backoff,
+            status_forcelist=(429, 500, 502, 503, 504),
+            allowed_methods=("GET",),
+            respect_retry_after_header=True,
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+    return session
+
+
+def retry_after(response) -> float | None:
+    """Return the seconds from a Retry-After header, if it has a number."""
+    try:
+        return float(response.headers.get("Retry-After"))
+    except (TypeError, ValueError):
+        return None
+
+
 def get_game_data(body: bytes) -> dict | None:
     """Get Game Data from Spelling Bee Page."""
     soup = BeautifulSoup(body, "html.parser")
@@ -90,8 +119,15 @@ class NYTGamesClient:
     from a logged in nytimes.com browser session.
 
     HTTP errors from NYT are raised as NYTGamesHTTPError (a subclass of
-    `requests.HTTPError`): NYTGamesAuthenticationError for 401 and 403, and
-    NYTGamesNotFoundError for 404.
+    `requests.HTTPError`): NYTGamesAuthenticationError for 401 and 403,
+    NYTGamesNotFoundError for 404 and NYTGamesRateLimitError for 429.
+
+    Failed connections, timeouts, rate limits (429) and NYT server errors
+    (500, 502, 503, 504) are retried up to `retries` times with exponential
+    backoff (`backoff` seconds, doubling each time), honoring NYT's
+    Retry-After header. Retries are only set up on the session the client
+    creates; a `session` you pass in, such as a requests-cache session, is
+    used as is.
     """
 
     def __init__(
@@ -100,11 +136,15 @@ class NYTGamesClient:
         session: requests.Session | None = None,
         timeout: float = 30,
         user_agent: str = USER_AGENT,
+        retries: int = 3,
+        backoff: float = 0.5,
+        base_url: str = NYT_BASE_URL,
     ):
         self.cookies = parse_cookies(cookies)
-        self.session = session or requests.Session()
+        self.session = session or retrying_session(retries, backoff)
         self.timeout = timeout
         self.user_agent = user_agent
+        self.base_url = base_url.rstrip("/")
 
     def _get(self, path: str, params: dict | None = None, json_response: bool = True):
         """Return the response from a GET request to NYT."""
@@ -114,7 +154,7 @@ class NYTGamesClient:
         if params:
             params = {k: v for k, v in params.items() if v is not None}
         response = self.session.get(
-            f"{NYT_BASE_URL}{path}",
+            f"{self.base_url}{path}",
             cookies=self.cookies,
             headers=headers,
             params=params,
@@ -124,6 +164,10 @@ class NYTGamesClient:
         try:
             response.raise_for_status()
         except requests.HTTPError as err:
+            if response.status_code == 429:
+                raise NYTGamesRateLimitError(
+                    str(err), response=response, retry_after=retry_after(response)
+                ) from err
             error_class = {
                 401: NYTGamesAuthenticationError,
                 403: NYTGamesAuthenticationError,

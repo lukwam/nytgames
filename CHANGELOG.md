@@ -16,6 +16,15 @@ versions may include breaking changes.
   `.squares()`, `StrandsPuzzle.words()` (words with their paths) and
   `ConnectionsPuzzle.board()`. Special puzzles are kept as they are.
 
+- Retries with exponential backoff for failed connections, timeouts, rate
+  limits and NYT server errors, honoring `Retry-After`
+  (`NYTGamesClient(retries=3, backoff=0.5)`). Sessions you pass in are used
+  as is.
+- `NYTGamesRateLimitError` (429 after retries) with `retry_after`, and a
+  matching nytg message.
+- `NYTGamesClient(base_url=...)`, for proxies and testing.
+- `urllib3` is declared as a dependency (it comes with requests).
+
 ### Fixed
 
 - `crossword_puzzles()` returned a validation error when NYT sends null
