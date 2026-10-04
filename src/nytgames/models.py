@@ -1,9 +1,12 @@
 """NYT Games models."""
 import datetime
 from enum import Enum
+from typing import Annotated
+from typing import Any
 from typing import Dict
 from typing import List
 from pydantic import BaseModel
+from pydantic import BeforeValidator
 from pydantic import ConfigDict
 from pydantic import Field
 
@@ -77,11 +80,20 @@ class CrosswordGame(NYTModel):
     user_id: int
 
 
+def number_or_text(value: Any) -> Any:
+    """Return numeric strings as ints, and anything else unchanged."""
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return value
+
+
 class CrosswordPuzzleCell(NYTModel):
     """Crossword Puzzle Cell."""
     answer: str | None = None
     clues: List[int] | None = None
-    label: int | None = None
+    # Usually the clue number. Some special puzzles label squares with text,
+    # such as "CW" or an arrow, which is kept as a string.
+    label: Annotated[int | str | None, BeforeValidator(number_or_text)] = None
     # Rebus squares list other accepted answers, e.g. {"valid": ["L"]}.
     moreAnswers: Dict[str, List[str]] | None = None
     type: int | None = None
@@ -91,7 +103,8 @@ class CrosswordPuzzleClue(NYTModel):
     """Crossword Puzzle Clue."""
     cells: List[int]
     direction: str
-    label: str
+    # Special clues, such as an "Around" clue, can have no label.
+    label: str | None = None
     list: int | None = None
     relatives: List[int] | None = None
     text: List[Dict[str, str]]

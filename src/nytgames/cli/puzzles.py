@@ -272,7 +272,9 @@ def crossword(
             clue = body.clues[index]
             entry = {"label": clue.label, "clue": "".join(t.get("plain", "") for t in clue.text)}
             if answers:
-                entry["answer"] = "".join(cells[i].answer or "" for i in clue.cells)
+                # Some clues that turn corners repeat the corner square.
+                squares = [i for n, i in enumerate(clue.cells) if n == 0 or i != clue.cells[n - 1]]
+                entry["answer"] = "".join(cells[i].answer or "" for i in squares)
             entries.append(entry)
         clue_lists[clue_list.name.lower()] = entries
 
