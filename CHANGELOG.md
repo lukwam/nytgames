@@ -22,6 +22,8 @@ versions may include breaking changes.
 - `crossword_game()`, `wordle_latest()` and `spelling_bee_latest()` accept a
   list of puzzle IDs.
 
+- Python 3.14 support. Python 3.15 is tested while it's in pre-release.
+
 ### Fixed
 
 - `crossword_puzzles("midi")` raises `ValueError` instead of returning Daily

@@ -66,7 +66,8 @@ examples/api/        Example main.py and Dockerfile for running your own API
 
 ## Pull requests
 
-Tests run on Python 3.10 to 3.13 for every pull request. Keep changes focused,
+Tests run on Python 3.10 to 3.14 for every pull request, plus the next
+Python release while it's in pre-release. Keep changes focused,
 and explain in the description what you checked against NYT.
 
 ## Releases
