@@ -2,8 +2,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/nytimes-games)](https://pypi.org/project/nytimes-games/)
 [![Python](https://img.shields.io/pypi/pyversions/nytimes-games)](https://pypi.org/project/nytimes-games/)
-[![Test](https://github.com/lukwam/nytgames/actions/workflows/test.yml/badge.svg)](https://github.com/lukwam/nytgames/actions/workflows/test.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/lukwam/nytgames/blob/main/LICENSE)
+[![Test](https://github.com/lukwam/nytimes-games/actions/workflows/test.yml/badge.svg)](https://github.com/lukwam/nytimes-games/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/lukwam/nytimes-games/blob/main/LICENSE)
 
 Unofficial Python client and API for the New York Times Games APIs (Wordle,
 Connections, Strands, Spelling Bee, Letter Boxed and the Daily, Mini, Midi and

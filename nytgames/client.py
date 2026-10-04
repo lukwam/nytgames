@@ -33,7 +33,7 @@ from nytgames.models import WordlePuzzlesList
 logger = logging.getLogger(__name__)
 
 NYT_BASE_URL = "https://www.nytimes.com"
-USER_AGENT = f"nytgames/{__version__} (+https://github.com/lukwam/nytgames)"
+USER_AGENT = f"nytimes-games/{__version__} (+https://github.com/lukwam/nytimes-games)"
 
 Cookies = Mapping[str, str] | Iterable[Mapping[str, Any]] | str | None
 

@@ -48,9 +48,9 @@ api = ["fastapi>=0.111"]
 test = ["httpx", "pytest"]
 
 [project.urls]
-Homepage = "https://github.com/lukwam/nytgames"
-Issues = "https://github.com/lukwam/nytgames/issues"
-Releases = "https://github.com/lukwam/nytgames/releases"
+Homepage = "https://github.com/lukwam/nytimes-games"
+Issues = "https://github.com/lukwam/nytimes-games/issues"
+Releases = "https://github.com/lukwam/nytimes-games/releases"
 
 [tool.setuptools.packages.find]
 include = ["nytgames*"]
