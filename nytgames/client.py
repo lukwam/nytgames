@@ -25,6 +25,7 @@ from nytgames.models import Player
 from nytgames.models import SpellingBeeGameData
 from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
+from nytgames.models import SpellingBeePuzzle
 from nytgames.models import StrandsPuzzle
 from nytgames.models import WordlePuzzle
 from nytgames.models import WordlePuzzlesList
@@ -216,6 +217,18 @@ class NYTGamesClient:
         if game_data is None:
             raise NYTGamesParseError("Spelling Bee game data not found in the page")
         return SpellingBeeGameData(**game_data)
+
+    def spelling_bee_puzzle(self, date: str) -> SpellingBeeGameDay:
+        """Return the Spelling Bee puzzle for a date (YYYY-MM-DD).
+
+        Puzzles are available from 2018-05-06, and NYT also serves the next
+        day ahead of time. The result has the same shape as the game page
+        puzzles from spelling_bee_puzzles(), including the full word list, so
+        it works with spelling_bee_hints(). Dates without a puzzle raise
+        NYTGamesNotFoundError.
+        """
+        response = self._get(f"/svc/spelling-bee/v1/{date}.json")
+        return SpellingBeePuzzle(**response).to_game_day()
 
     def spelling_bee_puzzles(self) -> dict[str, SpellingBeeGameDay]:
         """Return every Spelling Bee puzzle on the game page, keyed by print date.

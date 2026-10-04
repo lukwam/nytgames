@@ -33,8 +33,9 @@ client.crossword_game(24287)              # your saved progress on a puzzle
 client.crossword_puzzles("daily", date_start="2025-06-01", date_end="2025-06-30")
 client.player_stats().stats.connections.current_streak   # your stats for every game
 
-puzzles = client.spelling_bee_puzzles()   # {print_date: puzzle}, about the last two weeks
-spelling_bee_hints(puzzles["2026-10-03"])  # Spelling Bee Forum style hints
+puzzle = client.spelling_bee_puzzle("2026-10-03")   # any date from 2018-05-06
+spelling_bee_hints(puzzle)                          # Spelling Bee Forum style hints
+client.spelling_bee_puzzles()   # {print_date: puzzle} from the game page, about two weeks
 ```
 
 `cookies` can be a dict, a `Cookie` header string, or a list of cookie objects
@@ -75,7 +76,7 @@ Interactive docs are served at `/docs` and `/redoc`.
 | `GET /player/stats` | `svc/games/state/wordleV2/latests?puzzle_ids=0` (your stats for every game) |
 | `GET /spelling-bee` | Scraped from `puzzles/spelling-bee` |
 | `GET /spelling-bee/latest` | `svc/games/state/spelling_bee/latests` (up to 30 `puzzle_ids`) |
-| `GET /spelling-bee/{date}` | Scraped from `puzzles/spelling-bee` (about the last two weeks) |
+| `GET /spelling-bee/{date}` | `svc/spelling-bee/v1/{date}.json` (from 2018-05-06) |
 | `GET /spelling-bee/{date}/hints` | Computed from the puzzle above |
 | `GET /strands/{date}` | `svc/strands/v2/{date}.json` |
 | `GET /wordle/latest` | `svc/games/state/wordleV2/latests` |

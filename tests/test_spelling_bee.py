@@ -6,12 +6,15 @@ import json
 from unittest import mock
 
 import pytest
+import requests
 from fastapi.testclient import TestClient
 
 import main
 from nytgames import NYTGamesClient
+from nytgames import NYTGamesNotFoundError
 from nytgames import spelling_bee_hints
 from nytgames.models import SpellingBeeGameDay
+from nytgames.models import SpellingBeePuzzle
 
 
 def make_puzzle(print_date, answers, letters="iabchln", pangrams=None):
@@ -131,18 +134,88 @@ def test_spelling_bee_fails_without_game_data(page):
         NYTGamesClient().spelling_bee_puzzles()
 
 
-def test_api_date_route_returns_404_outside_the_page(page):
-    client = TestClient(main.app)
+V1_PUZZLE = {
+    "id": 24710,
+    "answers": ["chin", "hail"],
+    "center_letter": "i",
+    "editor": "Sam Ezersky",
+    "outer_letters": "abchln",
+    "pangrams": ["bacchanalia"],
+    "print_date": "2026-10-03",
+}
 
-    assert client.get("/spelling-bee/2026-10-02").status_code == 200
-    assert client.get("/spelling-bee/2020-01-01").status_code == 404
+
+@pytest.fixture
+def v1():
+    """Patch the HTTP session to return a v1 Spelling Bee puzzle."""
+    with mock.patch("requests.Session.get") as patched:
+        response = patched.return_value
+        response.status_code = 200
+        response.json.return_value = V1_PUZZLE
+        response.raise_for_status.return_value = None
+        yield patched
 
 
-def test_api_hints_route(page):
+def test_v1_puzzle_converts_to_the_game_page_format():
+    day = SpellingBeePuzzle(**V1_PUZZLE).to_game_day()
+
+    # v1 answers leave out the pangrams; the game page lists them first.
+    assert day.answers == ["bacchanalia", "chin", "hail"]
+    assert day.pangrams == ["bacchanalia"]
+    assert day.centerLetter == "i"
+    assert day.outerLetters == ["a", "b", "c", "h", "l", "n"]
+    assert day.validLetters == ["i", "a", "b", "c", "h", "l", "n"]
+    assert day.displayDate == "October 3, 2026"
+    assert day.displayWeekday == "Saturday"
+    assert day.printDate == "2026-10-03"
+    assert day.id == 24710
+    assert day.freeExpiration is None
+
+
+def test_v1_puzzle_matches_page_puzzle_hints():
+    page_day = make_puzzle("2026-10-03", ["bacchanalia", "chin", "hail"], pangrams=["bacchanalia"])
+
+    v1_day = SpellingBeePuzzle(**V1_PUZZLE).to_game_day()
+
+    assert spelling_bee_hints(v1_day) == spelling_bee_hints(page_day)
+
+
+def test_spelling_bee_puzzle_by_date(v1):
+    day = NYTGamesClient().spelling_bee_puzzle("2026-10-03")
+
+    assert day.answers == ["bacchanalia", "chin", "hail"]
+    assert v1.call_args.args[0] == "https://www.nytimes.com/svc/spelling-bee/v1/2026-10-03.json"
+
+
+def test_spelling_bee_puzzle_missing_date_raises_not_found(v1):
+    response = v1.return_value
+    response.status_code = 404
+    response.raise_for_status.side_effect = requests.HTTPError("404", response=response)
+
+    with pytest.raises(NYTGamesNotFoundError):
+        NYTGamesClient().spelling_bee_puzzle("2018-05-01")
+
+
+def test_api_date_route(v1):
+    response = TestClient(main.app).get("/spelling-bee/2026-10-03")
+
+    assert response.status_code == 200
+    assert response.json()["answers"] == ["bacchanalia", "chin", "hail"]
+
+
+def test_api_date_route_returns_404_for_missing_dates(v1):
+    response = v1.return_value
+    response.status_code = 404
+    response.raise_for_status.side_effect = requests.HTTPError("404", response=response)
+
+    assert TestClient(main.app).get("/spelling-bee/2018-05-01").status_code == 404
+
+
+def test_api_hints_route(v1):
     response = TestClient(main.app).get("/spelling-bee/2026-10-03/hints")
 
     assert response.status_code == 200
-    assert response.json() == spelling_bee_hints(PUZZLES[0])
+    assert response.json() == spelling_bee_hints(SpellingBeePuzzle(**V1_PUZZLE).to_game_day())
 
 
 def test_api_latest_route_is_not_treated_as_a_date(page):

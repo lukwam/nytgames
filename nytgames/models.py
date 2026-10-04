@@ -1,4 +1,5 @@
 """NYT Games models."""
+import datetime
 from enum import Enum
 from typing import Dict
 from typing import List
@@ -185,11 +186,47 @@ class SpellingBeeGameDay(NYTModel):
     displayDate: str
     displayWeekday: str
     editor: str
-    freeExpiration: int
+    freeExpiration: int | None = None
     outerLetters: List[str]
     pangrams: List[str]
     printDate: str
     validLetters: List[str]
+
+
+class SpellingBeePuzzle(NYTModel):
+    """Spelling Bee Puzzle from the dated svc/spelling-bee/v1 endpoint.
+
+    Note that `answers` does not include the pangrams. Use to_game_day() to get
+    the same shape as the game page, with the full word list.
+    """
+    id: int
+    answers: List[str]
+    center_letter: str
+    editor: str
+    outer_letters: str
+    pangrams: List[str]
+    print_date: str
+
+    def to_game_day(self) -> SpellingBeeGameDay:
+        """Return the puzzle in the game page format.
+
+        `answers` lists the pangrams first, as the game page does.
+        `freeExpiration` is not available and is left unset.
+        """
+        date = datetime.date.fromisoformat(self.print_date)
+        outer_letters = list(self.outer_letters)
+        return SpellingBeeGameDay(
+            id=self.id,
+            answers=[*self.pangrams, *self.answers],
+            centerLetter=self.center_letter,
+            displayDate=f"{date:%B} {date.day}, {date.year}",
+            displayWeekday=f"{date:%A}",
+            editor=self.editor,
+            outerLetters=outer_letters,
+            pangrams=self.pangrams,
+            printDate=self.print_date,
+            validLetters=[self.center_letter, *outer_letters],
+        )
 
 
 class SpellingBeeGamePastPuzzles(NYTModel):
