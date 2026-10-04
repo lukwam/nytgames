@@ -18,9 +18,20 @@ class NYTModel(BaseModel):
 
 
 class ConnectionsPuzzleCard(NYTModel):
-    """Connections Puzzle Card."""
-    content: str
+    """Connections Puzzle Card.
+
+    Most cards are words (`content`). Picture puzzles use image cards instead,
+    with `image_url` and `image_alt_text`, and a puzzle can mix both.
+    """
+    content: str | None = None
+    image_alt_text: str | None = None
+    image_url: str | None = None
     position: int
+
+    @property
+    def text(self) -> str | None:
+        """The card's word, or the alt text for an image card."""
+        return self.content if self.content is not None else self.image_alt_text
 
 
 class ConnectionsPuzzleCategory(NYTModel):
@@ -35,6 +46,7 @@ class ConnectionsPuzzle(NYTModel):
     status: str
     print_date: str
     editor: str
+    illustrator: str | None = None
     categories: List[ConnectionsPuzzleCategory]
 
 
