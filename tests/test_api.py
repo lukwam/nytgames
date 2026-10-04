@@ -206,3 +206,30 @@ def test_crossword_oracle(nyt):
 def test_crossword_oracle_rejects_unknown_type():
     """Unknown publish types are rejected before calling NYT."""
     assert client.get("/crosswords/oracle/nope").status_code == 422
+
+
+def test_wordle_latest_states_are_models(nyt):
+    """Wordle game states are validated like the other game states."""
+    nyt.return_value = mock_response({
+        "user_id": 123,
+        "player": {},
+        "states": [{
+            "game": "wordleV2",
+            "game_data": {
+                "boardState": ["crane", "", "", "", "", ""],
+                "currentRowIndex": 1,
+                "hardMode": True,
+                "isPlayingArchive": False,
+                "status": "IN_PROGRESS",
+            },
+            "print_date": "2026-09-30",
+            "puzzle_id": "829",
+            "schema_version": "0.52.0",
+            "timestamp": 0,
+            "user_id": 123,
+            "version": "1",
+        }],
+    })
+    response = client.get("/wordle/latest?puzzle_ids=829")
+    assert response.status_code == 200
+    assert response.json()["states"][0]["game_data"]["status"] == "IN_PROGRESS"

@@ -319,8 +319,29 @@ class WordlePuzzle(NYTModel):
     solution: str
 
 
+class WordleGameData(NYTModel):
+    """Wordle Game Data (the user's saved progress)."""
+    boardState: List[str]
+    currentRowIndex: int
+    hardMode: bool | None = None
+    isPlayingArchive: bool | None = None
+    status: str
+
+
+class WordleGameState(NYTModel):
+    """Wordle Game State."""
+    game: str
+    game_data: WordleGameData
+    print_date: str
+    puzzle_id: str
+    schema_version: str | None = None
+    timestamp: int
+    user_id: int
+    version: str | None = None
+
+
 class WordlePuzzlesList(NYTModel):
-    """Wordle Puzzle List."""
-    player: dict
-    states: List[dict]
+    """Wordle Game States."""
+    player: dict | None = None
+    states: List[WordleGameState]
     user_id: int
