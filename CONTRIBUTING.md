@@ -40,6 +40,7 @@ src/nytgames/
     models.py        Pydantic models for NYT's responses
     exceptions.py    Error types
     spelling_bee.py  Spelling Bee hints
+    formats.py       Crossword export: .puz, .ipuz and Crossword Compiler .xml
     api.py           Optional FastAPI app and router (the "api" extra)
     cli/             Optional nytg command line (the "cli" extra)
         app.py       Root command, global options and error messages

@@ -2,8 +2,11 @@
 
 Answers are hidden unless --answers is given, in every output format.
 """
+import datetime
 import enum
+from pathlib import Path
 from typing import Annotated
+from typing import Optional
 
 import typer
 from rich.columns import Columns
@@ -11,6 +14,8 @@ from rich.table import Table
 from rich.text import Text
 
 from nytgames import spelling_bee_hints
+from nytgames import formats
+from nytgames.cli.output import console
 from nytgames.cli.output import FormatOption
 from nytgames.cli.output import emit
 from nytgames.cli.output import key_value_table
@@ -233,6 +238,33 @@ def letter_boxed(date: DateArgument = "today", answers: AnswersOption = False, f
     emit(data, fmt, table)
 
 
+TITLES = {"daily": "New York Times Crossword", "mini": "NYT Mini Crossword",
+          "midi": "NYT Midi Crossword", "bonus": "NYT Bonus Crossword"}
+
+
+def export_title(puzzle, kind: str) -> str:
+    """The title for an exported crossword file."""
+    date = datetime.date.fromisoformat(puzzle.publicationDate)
+    title = f"{TITLES[kind]}, {date:%B} {date.day}, {date.year}"
+    return f"{title}: {puzzle.title}" if puzzle.title else title
+
+
+def save_crossword(client, puzzle, kind: str, path: Path, progress: bool) -> None:
+    """Save a crossword in the format matching the file extension."""
+    fmt = path.suffix.lower().lstrip(".")
+    if fmt not in formats.FORMATS:
+        raise typer.BadParameter(f"Use a .puz, .ipuz or .xml file name, not {path.name!r}.",
+                                 param_hint="'--save'")
+    game = client.crossword_game(puzzle.id, kind) if progress else None
+    try:
+        data = formats.export(puzzle, fmt, game, title=export_title(puzzle, kind))
+    except formats.NYTGamesExportError as err:
+        console.print(f"[red]Can't save this puzzle as .{fmt}:[/red] " + "; ".join(err.reasons))
+        raise typer.Exit(1) from None
+    path.write_bytes(data)
+    console.print(f"Saved [bold]{path}[/bold]" + (" with your progress" if progress else ""))
+
+
 class CrosswordType(str, enum.Enum):
     daily = "daily"
     mini = "mini"
@@ -245,13 +277,24 @@ def crossword(
     date: DateArgument = "today",
     answers: AnswersOption = False,
     clues: Annotated[bool, typer.Option(help="Show the clues.")] = True,
+    save: Annotated[
+        Optional[Path],
+        typer.Option("--save", "-o", help="Save as a crossword file: .puz, .ipuz or .xml (Crossword Compiler).",
+                     dir_okay=False),
+    ] = None,
+    progress: Annotated[bool, typer.Option("--progress", help="Include your saved progress in --save.")] = False,
     fmt: FormatOption = None,
 ) -> None:
-    """Show a crossword: the grid and clues, filled in with --answers."""
+    """Show a crossword: the grid and clues, filled in with --answers.
+
+    With --save, write it to a file for other crossword apps instead.
+    """
     kind = publish_type.value
     day = date_arg(date, f"crossword-{kind}")
     client = state.client()
     puzzle = client.crossword(kind, None if date == "today" and kind != "bonus" else day.isoformat())
+    if save:
+        return save_crossword(client, puzzle, kind, save, progress)
     body = puzzle.body[0]
     width = body.dimensions["width"]
     cells = body.cells

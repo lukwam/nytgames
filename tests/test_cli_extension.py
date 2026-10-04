@@ -18,6 +18,7 @@ from nytgames.cli.extension import FormatOption
 from nytgames.cli.extension import create_app
 from nytgames.cli.extension import emit
 from nytgames.cli.extension import run
+from nytgames.cli.state import State
 from nytgames.models import WordlePuzzle
 
 runner = CliRunner()
@@ -87,7 +88,7 @@ def test_extension_commands_get_root_options():
 def test_extension_commands_use_the_client_and_formats(monkeypatch):
     client = mock.Mock()
     client.wordle.return_value = WordlePuzzle(id=919, print_date="2025-06-12", solution="vixen")
-    monkeypatch.setattr(extension.state, "client", lambda: client)
+    monkeypatch.setattr(State, "client", lambda self: client)
 
     result = runner.invoke(tool_app(), ["db", "wordle", "--date", "2025-06-12", "-f", "value(id)"])
 

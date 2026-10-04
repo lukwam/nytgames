@@ -26,3 +26,16 @@ class NYTGamesNotFoundError(NYTGamesHTTPError):
 
 class NYTGamesParseError(NYTGamesError, ValueError):
     """An NYT page did not contain the expected game data."""
+
+
+class NYTGamesExportError(NYTGamesError, ValueError):
+    """A puzzle can't be converted to a file format.
+
+    `reasons` lists what the format can't represent, for example squares
+    labeled with text or clues that aren't straight across or down.
+    """
+
+    def __init__(self, fmt: str, reasons: list[str]):
+        self.format = fmt
+        self.reasons = reasons
+        super().__init__(f"Can't export to {fmt}: " + "; ".join(reasons))
