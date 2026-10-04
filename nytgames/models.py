@@ -59,7 +59,7 @@ class CrosswordGameState(NYTModel):
 
 class CrosswordGame(NYTModel):
     """Crossword Game States."""
-    player: dict | None = None
+    player: "Player | None" = None
     states: List[CrosswordGameState]
     user_id: int
 
@@ -215,69 +215,181 @@ class SpellingBeeLongestWord(NYTModel):
 
 
 class SpellingBeeRanks(NYTModel):
-    """Spelling Bee Ranks."""
-    Amazing: int
-    Beginner: int
-    Genius: int
-    Good: int
-    Good_Start: int = Field(..., alias="Good Start")
-    Great: int
-    Moving_Up: int = Field(..., alias="Moving Up")
-    Nice: int
-    Queen_Bee: int = Field(..., alias="Queen Bee")
-    Solid: int
+    """Spelling Bee Ranks (number of puzzles finished at each rank)."""
+    Amazing: int = 0
+    Beginner: int = 0
+    Genius: int = 0
+    Good: int = 0
+    Good_Start: int = Field(0, alias="Good Start")
+    Great: int = 0
+    Moving_Up: int = Field(0, alias="Moving Up")
+    Nice: int = 0
+    Queen_Bee: int = Field(0, alias="Queen Bee")
+    Solid: int = 0
 
 
-class SpellingBeeStatsSpellingBee(NYTModel):
-    """Spelling Bee Stats - Spelling Bee."""
+# Player stats
+#
+# These mirror the `player.stats` object NYT returns from the game state
+# service. A game's stats are only present once the user has played it.
+
+
+class SpellingBeeStats(NYTModel):
+    """Spelling Bee Stats."""
     puzzles_started: int
     total_words: int
     total_pangrams: int
-    longest_word: SpellingBeeLongestWord
+    longest_word: SpellingBeeLongestWord | None = None
     ranks: SpellingBeeRanks
 
 
-class SpellingBeeStatsWordleLegacyStatsGuesses(NYTModel):
-    """Spelling Bee Stats - Wordle Legacy Stats Guesses."""
-    one: int = Field(..., alias="1")
-    two: int = Field(..., alias="2")
-    three: int = Field(..., alias="3")
-    four: int = Field(..., alias="4")
-    five: int = Field(..., alias="5")
-    six: int = Field(..., alias="6")
-    fail: int
+class WordleGuesses(NYTModel):
+    """Wordle wins by number of guesses."""
+    one: int = Field(0, alias="1")
+    two: int = Field(0, alias="2")
+    three: int = Field(0, alias="3")
+    four: int = Field(0, alias="4")
+    five: int = Field(0, alias="5")
+    six: int = Field(0, alias="6")
+    fail: int = 0
 
 
-class SpellingBeeStatsWordleLegacyStats(NYTModel):
-    """Spelling Bee Stats - Wordle Legacy Stats."""
-    autoOptInTimestamp: int
+class WordleLegacyStats(NYTModel):
+    """Wordle Legacy Stats (daily games, including pre-NYT account history)."""
     currentStreak: int
     gamesPlayed: int
     gamesWon: int
-    guesses: SpellingBeeStatsWordleLegacyStatsGuesses
-    hasMadeStatsChoice: bool
-    hasPlayed: bool
-    lastWonDayOffset: int
+    guesses: WordleGuesses
+    hasPlayed: bool | None = None
+    lastWonDayOffset: int | None = None
     maxStreak: int
-    timestamp: int
 
 
-class SpellingBeeStatsWordle(NYTModel):
-    """Spelling Bee Stats - Wordle"""
-    legacyStats: SpellingBeeStatsWordleLegacyStats
+class WordleCalculatedStats(NYTModel):
+    """Wordle Calculated Stats (current streaks by print date)."""
+    currentStreak: int
+    hasPlayed: bool | None = None
+    lastCompletedPrintDate: str | None = None
+    lastWonPrintDate: str | None = None
+    maxStreak: int
 
 
-class SpellingBeePlayerStats(NYTModel):
-    """Spelling Bee Stats."""
-    spelling_bee: SpellingBeeStatsSpellingBee
-    wordle: SpellingBeeStatsWordle
+class WordleTotalStats(NYTModel):
+    """Wordle Total Stats (all games, including the archive)."""
+    gamesPlayed: int
+    gamesWon: int
+    guesses: WordleGuesses
+    hasPlayed: bool | None = None
+    hasPlayedArchive: bool | None = None
 
 
-class SpellingBeePlayer(NYTModel):
-    """Spelling Bee Player."""
-    user_id: int
-    last_updated: int
-    stats: SpellingBeePlayerStats
+class WordleStats(NYTModel):
+    """Wordle Stats.
+
+    NYT reports three overlapping sets of Wordle stats that can disagree (for
+    example the legacy and calculated current streaks), so they are kept
+    separate rather than merged.
+    """
+    calculatedStats: WordleCalculatedStats | None = None
+    legacyStats: WordleLegacyStats | None = None
+    totalStats: WordleTotalStats | None = None
+
+
+class ConnectionsStats(NYTModel):
+    """Connections Stats."""
+    current_streak: int
+    last_played_print_date: str | None = None
+    max_streak: int
+    # Number of puzzles finished with 0 to 4 mistakes.
+    mistakes: Dict[str, int]
+    puzzles_completed: int
+    puzzles_won: int
+
+
+class StrandsStats(NYTModel):
+    """Strands Stats."""
+    current_streak: int
+    last_played_print_date: str | None = None
+    max_streak: int
+    no_hints: int
+    puzzles_completed: int
+    puzzles_started: int
+    spangram_first: int
+
+
+class CrosswordStreak(NYTModel):
+    """Crossword Streak."""
+    current: int
+    longest: int
+    startDate: str | None = None
+
+
+class CrosswordBestTime(NYTModel):
+    """Crossword Best Time."""
+    date: str | None = None
+    timeSeconds: int
+
+
+class CrosswordDayStats(NYTModel):
+    """Crossword Daily Stats for one day of the week."""
+    avgTimeSeconds: int
+    best: CrosswordBestTime | None = None
+    latestDate: str | None = None
+    latestTimeSeconds: int | None = None
+    thisWeeksDate: str | None = None
+    thisWeeksTime: int | None = None
+    totalSolveTime: int
+    totalSolves: int
+    verticalStreak: CrosswordStreak | None = None
+
+
+class CrosswordDailyStats(NYTModel):
+    """Crossword Daily Stats."""
+    # Keyed by lowercase day of the week ("monday" to "sunday").
+    dailyStats: Dict[str, CrosswordDayStats]
+    dailyStreaks: CrosswordStreak | None = None
+    puzzlesSolved: int
+    puzzlesStarted: int
+    solveRate: float
+
+
+class CrosswordMiniStats(NYTModel):
+    """Crossword Mini and Midi Stats."""
+    avgTimeSeconds: int
+    bestDate: str | None = None
+    bestTimeSeconds: int | None = None
+    puzzlesSolved: int
+    puzzlesStarted: int
+    solveRate: float
+    streaks: CrosswordStreak | None = None
+
+
+class PlayerStats(NYTModel):
+    """Player Stats for every game the user has played."""
+    connections: ConnectionsStats | None = None
+    crossword_daily: CrosswordDailyStats | None = None
+    crossword_midi: CrosswordMiniStats | None = None
+    crossword_mini: CrosswordMiniStats | None = None
+    spelling_bee: SpellingBeeStats | None = None
+    strands: StrandsStats | None = None
+    wordle: WordleStats | None = None
+
+
+class Player(NYTModel):
+    """Player."""
+    account_creation_date: str | None = None
+    last_updated: int | None = None
+    stats: PlayerStats = PlayerStats()
+    user_id: int | None = None
+
+
+# Names used before the player stats models were shared across games.
+SpellingBeeStatsSpellingBee = SpellingBeeStats
+SpellingBeeStatsWordleLegacyStatsGuesses = WordleGuesses
+SpellingBeeStatsWordleLegacyStats = WordleLegacyStats
+SpellingBeeStatsWordle = WordleStats
+SpellingBeePlayerStats = PlayerStats
+SpellingBeePlayer = Player
 
 
 class SpellingBeeLatestStateGameData(NYTModel):
@@ -303,7 +415,7 @@ class SpellingBeeLatest(NYTModel):
     """Spelling Bee Latest."""
     user_id: int
     states: List[SpellingBeeLatestState]
-    player: SpellingBeePlayer
+    player: Player
 
 
 class StrandsPuzzle(NYTModel):
@@ -353,6 +465,9 @@ class WordleGameState(NYTModel):
 
 class WordlePuzzlesList(NYTModel):
     """Wordle Game States."""
-    player: dict | None = None
+    player: Player | None = None
     states: List[WordleGameState]
     user_id: int
+
+
+CrosswordGame.model_rebuild()

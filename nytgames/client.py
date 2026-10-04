@@ -9,6 +9,11 @@ from typing import Mapping
 import requests
 from bs4 import BeautifulSoup
 
+from nytgames import __version__
+from nytgames.exceptions import NYTGamesAuthenticationError
+from nytgames.exceptions import NYTGamesHTTPError
+from nytgames.exceptions import NYTGamesNotFoundError
+from nytgames.exceptions import NYTGamesParseError
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
 from nytgames.models import CrosswordOracle
@@ -16,6 +21,7 @@ from nytgames.models import CrosswordPublishType
 from nytgames.models import CrosswordPuzzle
 from nytgames.models import CrosswordPuzzlesList
 from nytgames.models import LetterBoxedPuzzle
+from nytgames.models import Player
 from nytgames.models import SpellingBeeGameData
 from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
@@ -26,6 +32,7 @@ from nytgames.models import WordlePuzzlesList
 logger = logging.getLogger(__name__)
 
 NYT_BASE_URL = "https://www.nytimes.com"
+USER_AGENT = f"nytgames/{__version__} (+https://github.com/lukwam/nytgames)"
 
 Cookies = Mapping[str, str] | Iterable[Mapping[str, Any]] | str | None
 
@@ -68,7 +75,9 @@ class NYTGamesClient:
     Subscriber content and user game state require the `NYT-S` session cookie
     from a logged in nytimes.com browser session.
 
-    HTTP errors from NYT are raised as `requests.HTTPError`.
+    HTTP errors from NYT are raised as NYTGamesHTTPError (a subclass of
+    `requests.HTTPError`): NYTGamesAuthenticationError for 401 and 403, and
+    NYTGamesNotFoundError for 404.
     """
 
     def __init__(
@@ -76,14 +85,18 @@ class NYTGamesClient:
         cookies: Cookies = None,
         session: requests.Session | None = None,
         timeout: float = 30,
+        user_agent: str = USER_AGENT,
     ):
         self.cookies = parse_cookies(cookies)
         self.session = session or requests.Session()
         self.timeout = timeout
+        self.user_agent = user_agent
 
     def _get(self, path: str, params: dict | None = None, json_response: bool = True):
         """Return the response from a GET request to NYT."""
-        headers = {"Accept": "application/json"} if json_response else {}
+        headers = {"User-Agent": self.user_agent}
+        if json_response:
+            headers["Accept"] = "application/json"
         if params:
             params = {k: v for k, v in params.items() if v is not None}
         response = self.session.get(
@@ -94,7 +107,15 @@ class NYTGamesClient:
             timeout=self.timeout,
         )
         logger.info("GET %s", response.request.url)
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as err:
+            error_class = {
+                401: NYTGamesAuthenticationError,
+                403: NYTGamesAuthenticationError,
+                404: NYTGamesNotFoundError,
+            }.get(response.status_code, NYTGamesHTTPError)
+            raise error_class(str(err), response=response) from err
         return response.json() if json_response else response
 
     # Connections
@@ -162,6 +183,18 @@ class NYTGamesClient:
         publish_type = CrosswordPublishType(publish_type).value
         return CrosswordOracle(**self._get(f"/svc/crosswords/v2/oracle/{publish_type}.json"))
 
+    # Player
+    def player_stats(self) -> Player:
+        """Return the user's stats for every game they have played.
+
+        Requires the NYT-S cookie. Includes the user's NYT user ID.
+        """
+        response = self._get(
+            "/svc/games/state/wordleV2/latests",
+            params={"puzzle_ids": "0"},
+        )
+        return Player(**response["player"])
+
     # Letter Boxed
     def letter_boxed(self, date: str) -> LetterBoxedPuzzle:
         """Return the Letter Boxed puzzle for a date (YYYY-MM-DD).
@@ -180,7 +213,7 @@ class NYTGamesClient:
         response = self._get("/puzzles/spelling-bee", json_response=False)
         game_data = get_game_data(response.content)
         if game_data is None:
-            raise ValueError("Spelling Bee game data not found in the page")
+            raise NYTGamesParseError("Spelling Bee game data not found in the page")
         return SpellingBeeGameData(**game_data)
 
     def spelling_bee_puzzles(self) -> dict[str, SpellingBeeGameDay]:

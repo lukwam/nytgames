@@ -1,8 +1,24 @@
 """Unofficial client for the New York Times Games APIs."""
-from nytgames.client import NYTGamesClient
-from nytgames.client import parse_cookies
-from nytgames.models import CrosswordPublishType
-from nytgames.spelling_bee import spelling_bee_hints
-
-__all__ = ["NYTGamesClient", "CrosswordPublishType", "parse_cookies", "spelling_bee_hints"]
 __version__ = "0.2.0"
+
+from nytgames.client import NYTGamesClient  # noqa: E402
+from nytgames.client import parse_cookies  # noqa: E402
+from nytgames.exceptions import NYTGamesAuthenticationError  # noqa: E402
+from nytgames.exceptions import NYTGamesError  # noqa: E402
+from nytgames.exceptions import NYTGamesHTTPError  # noqa: E402
+from nytgames.exceptions import NYTGamesNotFoundError  # noqa: E402
+from nytgames.exceptions import NYTGamesParseError  # noqa: E402
+from nytgames.models import CrosswordPublishType  # noqa: E402
+from nytgames.spelling_bee import spelling_bee_hints  # noqa: E402
+
+__all__ = [
+    "CrosswordPublishType",
+    "NYTGamesAuthenticationError",
+    "NYTGamesClient",
+    "NYTGamesError",
+    "NYTGamesHTTPError",
+    "NYTGamesNotFoundError",
+    "NYTGamesParseError",
+    "parse_cookies",
+    "spelling_bee_hints",
+]
