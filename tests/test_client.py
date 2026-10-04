@@ -129,7 +129,7 @@ def test_user_agent_identifies_the_library(session):
     import nytgames
     session.get.return_value.json.return_value = {"id": 1, "solution": "cigar", "print_date": "2021-06-19"}
     NYTGamesClient(session=session).wordle("2021-06-19")
-    assert session.get.call_args.kwargs["headers"]["User-Agent"].startswith(f"nytgames/{nytgames.__version__}")
+    assert session.get.call_args.kwargs["headers"]["User-Agent"].startswith(f"nytimes-games/{nytgames.__version__}")
 
 
 def test_player_stats(session):
