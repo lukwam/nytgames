@@ -190,7 +190,8 @@ class NYTGamesClient:
         """Return a list of crossword puzzles, including the user's progress.
 
         `publish_type` is daily, mini or bonus. NYT returns at most 100 puzzles
-        per request. NYT's list doesn't include Midi puzzles (it returns Daily
+        per request, and incomplete or empty results for long ranges, so use
+        ranges of 90 days or less. NYT's list doesn't include Midi puzzles (it returns Daily
         puzzles instead), so `midi` raises ValueError; use
         archive("crossword_midi", ...) and crossword_game() for Midi puzzles.
         """

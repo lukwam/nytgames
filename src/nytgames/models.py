@@ -188,7 +188,9 @@ class CrosswordPuzzleListItem(NYTModel):
 
 class CrosswordPuzzlesList(NYTModel):
     """Crossword Puzzle List."""
-    results: List[CrosswordPuzzleListItem]
+    # NYT returns null instead of an empty list when there are no puzzles in
+    # the range, and for ranges that are too long.
+    results: Annotated[List[CrosswordPuzzleListItem], BeforeValidator(lambda v: v or [])] = []
     status: str
 
 

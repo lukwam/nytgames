@@ -3,6 +3,8 @@
 [![PyPI](https://img.shields.io/pypi/v/nytimes-games)](https://pypi.org/project/nytimes-games/)
 [![Python](https://img.shields.io/pypi/pyversions/nytimes-games)](https://pypi.org/project/nytimes-games/)
 [![Test](https://github.com/lukwam/nytimes-games/actions/workflows/test.yml/badge.svg)](https://github.com/lukwam/nytimes-games/actions/workflows/test.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Flukwam%2Fnytimes-games%2Fbadges%2Fcoverage-badge.json)](https://github.com/lukwam/nytimes-games/actions/workflows/test.yml)
+[![NYT live check](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Flukwam%2Fnytimes-games%2Fbadges%2Flive-check.json)](https://github.com/lukwam/nytimes-games/actions/workflows/live.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/lukwam/nytimes-games/blob/main/LICENSE)
 
 An unofficial Python client for the New York Times Games APIs: Wordle,
@@ -418,6 +420,14 @@ running your own instance in a container.
 
 NYT errors are returned with NYT's status code, for example 404 for a date
 with no puzzle.
+
+## Staying current with NYT
+
+NYT changes these APIs without notice. Every morning a
+[live check](https://github.com/lukwam/nytimes-games/actions/workflows/live.yml)
+fetches a real puzzle from every game and endpoint, and exports today's Mini
+to every file format. The **NYT live check** badge above shows the latest
+result and date, and failures open an issue automatically.
 
 ## Contributing
 

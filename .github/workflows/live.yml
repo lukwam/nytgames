@@ -1,0 +1,63 @@
+name: NYT live check
+
+# Checks every game against the live NYT APIs each morning, publishes the
+# README badge, and opens an issue when something breaks.
+on:
+  schedule:
+    - cron: "30 11 * * *"  # 7:30am in New York (6:30am in winter)
+  workflow_dispatch:
+
+permissions:
+  contents: write  # publish the badge to the badges branch
+  issues: write    # open and close the live-check issue
+
+concurrency:
+  group: live-check
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[test]"
+      - name: Check NYT
+        id: check
+        continue-on-error: true
+        env:
+          # Optional repository secret; adds a check of the user endpoints.
+          NYT_COOKIES: ${{ secrets.NYT_COOKIES }}
+        run: python scripts/live_check.py --json live-check-results.json --badge live-check.json --summary "$GITHUB_STEP_SUMMARY"
+      - name: Publish badge
+        if: always() && hashFiles('live-check.json') != ''
+        run: scripts/publish_badges.sh live-check.json
+      - name: Open or update the live-check issue
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          failed=$(python -c "import json; r=json.load(open('live-check-results.json')); print('\n'.join(f'- **{c[\"name\"]}**: {c[\"detail\"]}' for c in r['results'] if not c['ok']))" 2>/dev/null || echo "- The check didn't finish")
+          body=$(printf 'The nightly NYT live check failed. NYT may have changed an endpoint.\n\n%s\n\n[Run details](%s)' "$failed" "$RUN_URL")
+          gh label create live-check --color B60205 --description "NYT live check failures" 2>/dev/null || true
+          issue=$(gh issue list --label live-check --state open --json number --jq '.[0].number')
+          if [ -n "$issue" ]; then
+            gh issue comment "$issue" --body "$body"
+          else
+            gh issue create --label live-check --title "NYT live check failing" --body "$body"
+          fi
+      - name: Close the live-check issue when passing again
+        if: steps.check.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          issue=$(gh issue list --label live-check --state open --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$issue" ]; then
+            gh issue close "$issue" --comment "Passing again: $RUN_URL"
+          fi
+      - name: Fail if a check failed
+        if: steps.check.outcome == 'failure'
+        run: exit 1
