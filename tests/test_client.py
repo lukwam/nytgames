@@ -243,3 +243,18 @@ def test_archive_rejects_unknown_games(session):
     with pytest.raises(ValueError):
         NYTGamesClient(session=session).archive("spelling_bee", "2026-10-04", "2026-10-04")
     session.get.assert_not_called()
+
+
+@pytest.mark.parametrize("label,expected", [("12", 12), ("CW", "CW"), ("↙", "↙"), (None, None)])
+def test_crossword_cell_labels(label, expected):
+    """Cell labels are numbers, except on special puzzles that use text."""
+    from nytgames.models import CrosswordPuzzleCell
+    cell = CrosswordPuzzleCell(**({} if label is None else {"label": label}))
+    assert cell.label == expected
+
+
+def test_crossword_clue_without_label():
+    """Special clues, such as an "Around" clue, can have no label."""
+    from nytgames.models import CrosswordPuzzleClue
+    clue = CrosswordPuzzleClue(cells=[1, 2], direction="Around", text=[{"plain": "Self-descriptive"}])
+    assert clue.label is None

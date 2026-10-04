@@ -4,6 +4,18 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.6.1
+
+### Fixed
+
+- Crosswords with special square labels no longer fail validation.
+  `CrosswordPuzzleCell.label` is still an int for numbered squares, and a
+  string for text labels such as `CW` or arrows (2000-02-13, 2007-07-01,
+  2017-07-02). `CrosswordPuzzleClue.label` is optional, for special clues
+  like 2016-03-24's "Around" clue.
+- `nytg crossword --answers` no longer repeats letters in clues that turn a
+  corner.
+
 ## 0.6.0
 
 ### Added
