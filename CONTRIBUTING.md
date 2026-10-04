@@ -50,6 +50,7 @@ src/nytgames/
         output.py    --format handling, shared by every command
 tests/
 examples/api/        Example main.py and Dockerfile for running your own API
+docs/                The README screenshot; regenerate it with docs/make_screenshot.py
 ```
 
 ## Adding or fixing an endpoint

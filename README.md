@@ -15,6 +15,8 @@ package wraps them in one client with typed, validated
 stats dashboards, bots or your own games without reverse engineering NYT's
 APIs first. Optional extras add the `nytg` command line tool and a REST API.
 
+![nytg showing a Connections puzzle, a Strands board, a Mini crossword and Spelling Bee hints](https://raw.githubusercontent.com/lukwam/nytimes-games/main/docs/screenshot.svg)
+
 ## Installation
 
 ```bash
