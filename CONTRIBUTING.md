@@ -41,6 +41,7 @@ src/nytgames/
     exceptions.py    Error types
     spelling_bee.py  Spelling Bee hints
     formats.py       Crossword export: .puz, .ipuz and Crossword Compiler .xml
+    structure.py     Crossword entries and squares, Strands word paths
     api.py           Optional FastAPI app and router (the "api" extra)
     cli/             Optional nytg command line (the "cli" extra)
         app.py       Root command, global options and error messages
