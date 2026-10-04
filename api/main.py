@@ -25,6 +25,7 @@ from nytgames.models import CrosswordPublishType
 from nytgames.models import CrosswordPuzzle
 from nytgames.models import CrosswordPuzzlesList
 from nytgames.models import LetterBoxedPuzzle
+from nytgames.models import Player
 from nytgames.models import SpellingBeeGameData
 from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
@@ -55,6 +56,7 @@ app = FastAPI(
         {"name": "Crosswords - Midi", "description": "Crossword Midi Puzzles operations"},
         {"name": "Crosswords - Mini", "description": "Crossword Mini Puzzles operations"},
         {"name": "Letter Boxed", "description": "Letter Boxed Puzzles operations"},
+        {"name": "Player", "description": "Player stats operations"},
         {"name": "Spelling Bee", "description": "Spelling Bee Puzzles operations"},
         {"name": "Strands", "description": "Strands Puzzles operations"},
         {"name": "Wordle", "description": "Wordle Puzzles operations"},
@@ -412,6 +414,30 @@ def get_letter_boxed_puzzle(
     ```
     """
     return client.letter_boxed(date)
+
+
+# Player
+@app.get(
+    "/player/stats",
+    response_model=Player,
+    summary="Get the user's stats for every game",
+    tags=["Player"])
+def get_player_stats(
+    client: NYTGamesClient = Depends(get_client),
+) -> Player:
+    """
+    **Get player stats**
+
+    Returns the user's stats for every game they have played (Wordle,
+    Connections, Strands, Spelling Bee and the Daily, Mini and Midi
+    crosswords). Requires the `NYT-S` cookie.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/games/state/wordleV2/latests?puzzle_ids=0
+    ```
+    """
+    return client.player_stats()
 
 
 # Spelling Bee

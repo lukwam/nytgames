@@ -104,3 +104,70 @@ def test_letter_boxed(session):
     assert puzzle.sides == ["LHY", "MIE", "RUT", "WAP"]
     assert puzzle.model_dump()["is_free"] is True
     assert session.get.call_args.args[0] == "https://www.nytimes.com/svc/letter-boxed/v1/2026-10-03.json"
+
+
+@pytest.mark.parametrize("status,error", [
+    (401, "NYTGamesAuthenticationError"),
+    (403, "NYTGamesAuthenticationError"),
+    (404, "NYTGamesNotFoundError"),
+    (500, "NYTGamesHTTPError"),
+])
+def test_http_errors_are_typed(session, status, error):
+    """HTTP errors are raised as NYTGames errors that are still requests.HTTPError."""
+    import nytgames
+    response = session.get.return_value
+    response.status_code = status
+    response.raise_for_status.side_effect = requests.HTTPError(str(status), response=response)
+    with pytest.raises(getattr(nytgames, error)) as info:
+        NYTGamesClient(session=session).wordle("2026-10-03")
+    assert isinstance(info.value, requests.HTTPError)
+    assert info.value.response.status_code == status
+
+
+def test_user_agent_identifies_the_library(session):
+    """Requests identify nytgames in the User-Agent."""
+    import nytgames
+    session.get.return_value.json.return_value = {"id": 1, "solution": "cigar", "print_date": "2021-06-19"}
+    NYTGamesClient(session=session).wordle("2021-06-19")
+    assert session.get.call_args.kwargs["headers"]["User-Agent"].startswith(f"nytgames/{nytgames.__version__}")
+
+
+def test_player_stats(session):
+    """Player stats are read from the game state service with puzzle_ids=0."""
+    session.get.return_value.json.return_value = {
+        "user_id": 123,
+        "states": [],
+        "player": {
+            "user_id": 123,
+            "stats": {
+                "connections": {
+                    "current_streak": 150, "max_streak": 302, "mistakes": {"0": 1},
+                    "puzzles_completed": 850, "puzzles_won": 840,
+                },
+                "wordle": {
+                    "legacyStats": {
+                        "currentStreak": 72, "gamesPlayed": 1260, "gamesWon": 1228,
+                        "guesses": {"1": 2, "2": 39, "3": 314, "4": 484, "5": 281, "6": 108, "fail": 32},
+                        "maxStreak": 144,
+                    },
+                    "calculatedStats": {"currentStreak": 3, "maxStreak": 144},
+                },
+                "crossplay": {"won": 0},
+            },
+        },
+    }
+    player = NYTGamesClient(cookies="NYT-S=abc", session=session).player_stats()
+    assert player.user_id == 123
+    assert player.stats.connections.puzzles_won == 840
+    assert player.stats.wordle.legacyStats.guesses.three == 314
+    assert player.stats.wordle.calculatedStats.currentStreak == 3
+    assert player.stats.strands is None
+    assert player.stats.model_dump()["crossplay"] == {"won": 0}
+    assert session.get.call_args.kwargs["params"] == {"puzzle_ids": "0"}
+
+
+def test_old_stats_model_names_still_import():
+    """Model names from v0.1.0 still work."""
+    from nytgames.models import Player
+    from nytgames.models import SpellingBeePlayer
+    assert SpellingBeePlayer is Player
