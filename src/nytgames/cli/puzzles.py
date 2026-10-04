@@ -119,8 +119,14 @@ def strands(date: DateArgument = "today", answers: AnswersOption = False, fmt: F
 
     def table(data):
         styles = {}
+        word_styles = [f"bold white on {color}" for color in
+                       ("blue", "dark_cyan", "purple4", "dark_green", "deep_pink4", "dark_red")]
         for coords in data.get("theme_coords", {}).values():
-            styles.update({tuple(c): "bold white on blue" for c in coords})
+            # Give each word a color that none of its neighboring letters have.
+            neighbors = {styles.get((r + dr, c + dc)) for r, c in coords
+                         for dr in (-1, 0, 1) for dc in (-1, 0, 1)}
+            style = next((s for s in word_styles if s not in neighbors), word_styles[0])
+            styles.update({tuple(c): style for c in coords})
         styles.update({tuple(c): "bold black on yellow" for c in data.get("spangram_coords", [])})
         yield Text(f"Strands {data['date']}: {data['clue']}", style="bold")
         board = Text()
