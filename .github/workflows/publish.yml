@@ -17,7 +17,7 @@ jobs:
           python-version: "3.12"
       - name: Check the tag matches the package version
         run: |
-          version=$(python -c "import re; print(re.search(r'__version__ = \"(.+)\"', open('nytgames/__init__.py').read()).group(1))")
+          version=$(python -c "import re; print(re.search(r'__version__ = \"(.+)\"', open('src/nytgames/__init__.py').read()).group(1))")
           test "v${version}" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} does not match version ${version}"; exit 1; }
       - run: pip install -e ".[api,test]" build
       - run: pytest
