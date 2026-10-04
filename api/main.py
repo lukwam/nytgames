@@ -7,7 +7,6 @@ import requests
 
 from fastapi import Depends
 from fastapi import FastAPI
-from fastapi import HTTPException
 from fastapi import Path
 from fastapi import Query
 
@@ -496,18 +495,15 @@ def get_spelling_bee_puzzle(
     """
     **Get a Spelling Bee puzzle**
 
-    Returns the Spelling Bee puzzle for the date provided in the path parameter.
-    Only puzzles from about the last two weeks are available.
+    Returns the Spelling Bee puzzle for the date provided in the path parameter,
+    in the same format as the game page. Puzzles are available from 2018-05-06.
 
     **Backend API**
     ```
-    GET https://www.nytimes.com/puzzles/spelling-bee
+    GET https://www.nytimes.com/svc/spelling-bee/v1/{date}.json
     ```
     """
-    puzzles = client.spelling_bee_puzzles()
-    if date not in puzzles:
-        raise HTTPException(status_code=404, detail=f"Spelling Bee {date} is not available")
-    return puzzles[date]
+    return client.spelling_bee_puzzle(date)
 
 
 @app.get(
@@ -523,12 +519,11 @@ def get_spelling_bee_puzzle_hints(
 
     Returns Spelling Bee Forum style hints (word counts by first letter and
     length, two-letter starts, pangrams and points) for the date provided in
-    the path parameter. Only puzzles from about the last two weeks are
-    available.
+    the path parameter. Puzzles are available from 2018-05-06.
 
     **Backend API**
     ```
-    GET https://www.nytimes.com/puzzles/spelling-bee
+    GET https://www.nytimes.com/svc/spelling-bee/v1/{date}.json
     ```
     """
     return spelling_bee_hints(get_spelling_bee_puzzle(client, date))
