@@ -188,19 +188,34 @@ class NYTGamesClient:
         `game` is connections, strands, wordle, crossword_daily, crossword_mini
         or crossword_midi. Each puzzle has its ID and print date, so this is the
         quickest way to find puzzle IDs for the game state methods. Doesn't
-        need cookies. NYT allows 31 days per request, so longer ranges are
-        fetched 31 days at a time. Future dates are not included.
+        need cookies. Future dates are not included.
+
+        A few dates have two puzzles (such as 2022-12-31's daily and its 50x50
+        Supermega); both are returned, so print dates can repeat.
+
+        NYT returns at most 31 puzzles per request, so ranges are fetched 31
+        days at a time, and a window that hits the limit is split and fetched
+        again so no date is dropped.
         """
         game = ArchiveGame(game).value
         start = datetime.date.fromisoformat(date_start)
         end = datetime.date.fromisoformat(date_end)
-        puzzles = []
+        puzzles: dict[int, ArchivePuzzle] = {}
         while start <= end:
             window_end = min(start + datetime.timedelta(days=ARCHIVE_DAYS - 1), end)
-            response = self._get(f"/svc/games/v1/archive/{game}/{start}/{window_end}")
-            puzzles.extend(ArchivePuzzle(**puzzle) for puzzle in response)
+            for puzzle in self._archive_window(game, start, window_end):
+                puzzles.setdefault(puzzle.id, puzzle)
             start = window_end + datetime.timedelta(days=1)
-        return puzzles
+        return sorted(puzzles.values(), key=lambda puzzle: (puzzle.print_date, puzzle.id))
+
+    def _archive_window(self, game: str, start: datetime.date, end: datetime.date) -> list[ArchivePuzzle]:
+        """Fetch one window, splitting it if NYT's 31 puzzle limit may have cut it short."""
+        response = self._get(f"/svc/games/v1/archive/{game}/{start}/{end}")
+        if len(response) < ARCHIVE_DAYS or start == end:
+            return [ArchivePuzzle(**puzzle) for puzzle in response]
+        middle = start + (end - start) // 2
+        return (self._archive_window(game, start, middle)
+                + self._archive_window(game, middle + datetime.timedelta(days=1), end))
 
     # Connections
     def connections(self, date: str) -> ConnectionsPuzzle:
@@ -222,6 +237,14 @@ class NYTGamesClient:
         path = f"/svc/crosswords/v6/puzzle/{publish_type}"
         path = f"{path}/{date}.json" if date else f"{path}.json"
         return CrosswordPuzzle(**self._get(path))
+
+    def crossword_by_id(self, puzzle_id: int | str) -> CrosswordPuzzle:
+        """Return a crossword of any type by its puzzle ID.
+
+        Use it for dates with more than one puzzle, where crossword(date)
+        returns only one of them (archive() lists both).
+        """
+        return CrosswordPuzzle(**self._get(f"/svc/crosswords/v6/puzzle/{puzzle_id}.json"))
 
     def crossword_puzzles(
         self,

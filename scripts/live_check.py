@@ -42,6 +42,11 @@ def checks(client: NYTGamesClient, today: datetime.date) -> list[tuple[str, Call
         assert body.cells and body.clues, "no cells or clues"
         return f"#{puzzle.id} {body.dimensions['width']}x{body.dimensions['height']}, {len(body.clues)} clues"
 
+    def crossword_by_id(puzzle_id: int) -> str:
+        puzzle = client.crossword_by_id(puzzle_id)
+        assert puzzle.id == puzzle_id and puzzle.body[0].cells
+        return f"#{puzzle.id} from {puzzle.publicationDate}"
+
     def wordle() -> str:
         puzzle = client.wordle(day)
         assert len(puzzle.solution) == 5
@@ -83,6 +88,9 @@ def checks(client: NYTGamesClient, today: datetime.date) -> list[tuple[str, Call
                   for game in ("wordle", "connections", "strands", "crossword_daily",
                                "crossword_mini", "crossword_midi")}
         assert all(counts.values()), counts
+        # December 2022 has 32 dailies (two on the 31st), over NYT's 31 per request.
+        december = client.archive("crossword_daily", "2022-12-01", "2022-12-31")
+        assert len(december) == 32 and december[0].print_date == "2022-12-01", len(december)
         return ", ".join(f"{game} {n}" for game, n in counts.items())
 
     def crossword_list() -> str:
@@ -110,6 +118,7 @@ def checks(client: NYTGamesClient, today: datetime.date) -> list[tuple[str, Call
         ("Midi crossword", lambda: crossword("midi")),
         ("Bonus crossword", lambda: crossword("bonus", first_of_month)),
         ("Crossword schedule", oracle),
+        ("Crossword by ID", lambda: crossword_by_id(20759)),
         ("Games archive", archive),
         ("Crossword list", crossword_list),
         ("Crossword export", exports),

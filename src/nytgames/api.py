@@ -208,6 +208,30 @@ def get_crossword_game(
 
 
 @router.get(
+    "/crosswords/id/{puzzle_id}",
+    response_model=CrosswordPuzzle,
+    summary="Get a crossword by its puzzle ID",
+    tags=["Crosswords"],
+)
+def get_crossword_by_id(
+    client: NYTGamesClient = Depends(get_client),
+    puzzle_id: int = Path(..., examples=[20759]),
+) -> CrosswordPuzzle:
+    """
+    **Get a crossword by ID**
+
+    Returns a crossword of any type by its puzzle ID, for example one of the
+    two puzzles on a date that has two (see `/archive`).
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/crosswords/v6/puzzle/{puzzle_id}.json
+    ```
+    """
+    return client.crossword_by_id(puzzle_id)
+
+
+@router.get(
     "/crosswords/oracle/{publish_type}",
     response_model=CrosswordOracle,
     summary="Get the current and next Crossword puzzle",

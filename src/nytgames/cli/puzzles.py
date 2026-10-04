@@ -285,6 +285,10 @@ def crossword(
                      dir_okay=False),
     ] = None,
     progress: Annotated[bool, typer.Option("--progress", help="Include your saved progress in --save.")] = False,
+    puzzle_id: Annotated[
+        Optional[int],
+        typer.Option("--id", help="Show the crossword with this puzzle ID instead, e.g. for dates with two."),
+    ] = None,
     fmt: FormatOption = None,
 ) -> None:
     """Show a crossword: the grid and clues, filled in with --answers.
@@ -294,7 +298,10 @@ def crossword(
     kind = publish_type.value
     day = date_arg(date, f"crossword-{kind}")
     client = state.client()
-    puzzle = client.crossword(kind, None if date == "today" and kind != "bonus" else day.isoformat())
+    if puzzle_id is not None:
+        puzzle = client.crossword_by_id(puzzle_id)
+    else:
+        puzzle = client.crossword(kind, None if date == "today" and kind != "bonus" else day.isoformat())
     if save:
         return save_crossword(client, puzzle, kind, save, progress)
     body = puzzle.body[0]

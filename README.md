@@ -66,6 +66,7 @@ Puzzles don't need cookies. Everything about you does.
 | Spelling Bee | `spelling_bee_puzzle(date)` | 2018-05-06 | Letters, word and pangram counts, forum-style hints | `answers`, `pangrams` |
 | Letter Boxed | `letter_boxed(date)` | 2018-12-17 | Sides, par, every accepted word | `ourSolution` |
 | Crossword | `crossword(publish_type, date=None)` | Daily 1993-11-21, Mini 2014-08-21, Midi 2026-02-25, Bonus 1997 | Grid, clues, entries, rebus, circles and shading | cell `answer`s |
+| Crossword by ID | `crossword_by_id(puzzle_id)` | Any crossword, e.g. both puzzles on a date with two | Same as `crossword` | cell `answer`s |
 | Crossword schedule | `crossword_oracle(publish_type)` | Current and next puzzle | Puzzle IDs and publish times | |
 | Puzzle list | `archive(game, date_start, date_end)` | Wordle, Connections, Strands, Daily, Mini, Midi | Puzzle IDs and dates for a range | Wordle `solution` |
 
@@ -475,6 +476,7 @@ running your own instance in a container.
 | `GET /crosswords/bonus/{date}` | `svc/crosswords/v6/puzzle/bonus/{date}.json` |
 | `GET /crosswords/{publish_type}/{date}/download?format=puz` | A `.puz`, `.ipuz` or `.xml` file (`&progress=true` adds your progress) |
 | `GET /crosswords/puzzles` | `svc/crosswords/v3/puzzles.json` |
+| `GET /crosswords/id/{puzzle_id}` | `svc/crosswords/v6/puzzle/{puzzle_id}.json` |
 | `GET /crosswords/oracle/{publish_type}` | `svc/crosswords/v2/oracle/{publish_type}.json` |
 | `GET /crosswords/game/{game_id}?publish_type=daily` | `svc/games/state/crossword_{publish_type}/latests` |
 | `GET /letter-boxed/{date}` | `svc/letter-boxed/v1/{date}.json` |

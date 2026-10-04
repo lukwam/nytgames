@@ -4,6 +4,22 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.8.1
+
+### Fixed
+
+- `archive()` could silently drop the first day of a 31-day window when a
+  date in it had two puzzles, because NYT returns at most 31 puzzles per
+  request (e.g. 2022-12-01, next to 2022-12-31's daily and Supermega).
+  Windows that hit the limit are now split and fetched again. Both puzzles on
+  a two-puzzle date are returned, sorted by date and ID. Found by nyt-puzzles.
+
+### Added
+
+- `crossword_by_id(puzzle_id)` for any crossword by ID, such as the second
+  puzzle on a date that has two. API route `/crosswords/id/{puzzle_id}` and
+  `nytg crossword --id`.
+
 ## 0.8.0
 
 ### Added
