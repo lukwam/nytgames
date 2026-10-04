@@ -52,6 +52,11 @@ def checks(client: NYTGamesClient, today: datetime.date) -> list[tuple[str, Call
         assert len(puzzle.solution) == 5
         return f"#{puzzle.days_since_launch}"
 
+    def wordlebot_summary() -> str:
+        summary = client.wordlebot_summary(day)
+        assert summary.average and summary.guesses
+        return f"average {summary.average['normal']:.2f} guesses"
+
     def connections() -> str:
         puzzle = client.connections(day)
         cards = [card for category in puzzle.categories for card in category.cards]
@@ -113,6 +118,7 @@ def checks(client: NYTGamesClient, today: datetime.date) -> list[tuple[str, Call
         ("Spelling Bee", bee),
         ("Spelling Bee page", bee_page),
         ("Letter Boxed", letter_boxed),
+        ("WordleBot summary", wordlebot_summary),
         ("Daily crossword", lambda: crossword("daily")),
         ("Mini crossword", lambda: crossword("mini")),
         ("Midi crossword", lambda: crossword("midi")),
@@ -132,7 +138,11 @@ def user_checks(client: NYTGamesClient) -> list[tuple[str, Callable[[], str]]]:
         assert player.user_id and player.stats.wordle
         return "stats for every game"
 
-    return [("Player stats", stats)]
+    def wordlebot() -> str:
+        analysis = client.wordlebot()  # None until WordleBot is opened today
+        return "today's analysis" if analysis else "no analysis yet today"
+
+    return [("Player stats", stats), ("WordleBot", wordlebot)]
 
 
 def run(name: str, check: Callable[[], str]) -> dict:

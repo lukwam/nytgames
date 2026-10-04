@@ -68,6 +68,7 @@ Puzzles don't need cookies. Everything about you does.
 | Crossword | `crossword(publish_type, date=None)` | Daily 1993-11-21, Mini 2014-08-21, Midi 2026-02-25, Bonus 1997 | Grid, clues, entries, rebus, circles and shading | cell `answer`s |
 | Crossword by ID | `crossword_by_id(puzzle_id)` | Any crossword, e.g. both puzzles on a date with two | Same as `crossword` | cell `answer`s |
 | Crossword schedule | `crossword_oracle(publish_type)` | Current and next puzzle | Puzzle IDs and publish times | |
+| WordleBot summary | `wordlebot_summary(date)` | 2021-06-19 | How everyone did: average guesses, skill and luck by mode, guess distributions, skill percentiles | `guesses` (the bot's solve paths) |
 | Puzzle list | `archive(game, date_start, date_end)` | Wordle, Connections, Strands, Daily, Mini, Midi | Puzzle IDs and dates for a range | Wordle `solution` |
 
 ### You (needs your NYT-S cookie)
@@ -78,6 +79,7 @@ Puzzles don't need cookies. Everything about you does.
 | Crossword progress | `crossword_game(puzzle_ids, publish_type)` | Your filled squares, time, gold star, revealed and checked squares (up to 30 puzzles per call) |
 | Crossword list | `crossword_puzzles(publish_type, date_start=..., date_end=...)` | Daily, Mini and Bonus puzzles with your solved status and star (90 days or less per call) |
 | Wordle progress | `wordle_latest(puzzle_ids)` | Your guesses and result |
+| WordleBot | `wordlebot()` | Your luck and skill for today's Wordle, overall and by round (today only, after you've opened WordleBot) |
 | Spelling Bee progress | `spelling_bee_latest(puzzle_ids)` | Words you found and your rank (up to 30 puzzles per call) |
 
 NYT doesn't record individual solve events, so progress means your saved
@@ -323,6 +325,7 @@ nytg auth status
 nytg stats                       # every game at a glance
 nytg stats crossword             # averages, bests and streaks by weekday
 nytg today                       # which of today's games you've played
+nytg wordlebot                   # your WordleBot luck and skill vs. everyone (any date for everyone)
 nytg history crossword --from 2026-01-01 -f csv > solves.csv
 nytg history wordle --from monday
 nytg history bee
@@ -486,6 +489,8 @@ running your own instance in a container.
 | `GET /spelling-bee/{date}` | `svc/spelling-bee/v1/{date}.json` |
 | `GET /spelling-bee/{date}/hints` | Computed from the puzzle above |
 | `GET /strands/{date}` | `svc/strands/v2/{date}.json` |
+| `GET /wordlebot` | `svc/int/run/cubby/public-api/v1/responses/wordlebot/reader` (today, needs cookies) |
+| `GET /wordlebot/{date}/summary` | `static01.nyt.com/newsgraphics/2022/wordlebot/{solution}-{date}/summary.json` |
 | `GET /wordle/latest` | `svc/games/state/wordleV2/latests` |
 | `GET /wordle/{date}` | `svc/wordle/v2/{date}.json` |
 
