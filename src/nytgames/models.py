@@ -179,6 +179,29 @@ class CrosswordPuzzlesList(NYTModel):
     status: str
 
 
+class ArchiveGame(str, Enum):
+    """Games available from the games archive (``NYTGamesClient.archive``)."""
+    connections = "connections"
+    crossword_daily = "crossword_daily"
+    crossword_midi = "crossword_midi"
+    crossword_mini = "crossword_mini"
+    strands = "strands"
+    wordle = "wordle"
+
+
+class ArchivePuzzle(NYTModel):
+    """A puzzle in the games archive.
+
+    Other fields depend on the game: crosswords have ``byline``, Strands has
+    ``constructor`` and ``word_count``, and Wordle includes ``solution`` and
+    ``days_since_launch``. They are kept as extra fields.
+    """
+    id: int
+    print_date: str
+    editor: str | None = None
+    byline: str | None = None
+
+
 class LetterBoxedPuzzle(NYTModel):
     """Letter Boxed Puzzle."""
     id: int

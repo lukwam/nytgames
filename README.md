@@ -13,7 +13,7 @@ NYT doesn't publish documentation or an API spec for these endpoints. This
 package wraps them in one client with typed, validated
 [Pydantic](https://docs.pydantic.dev/) models, so you can build archives,
 stats dashboards, bots or your own games without reverse engineering NYT's
-APIs first. An optional extra serves everything as a REST API.
+APIs first. Optional extras add the `nytg` command line tool and a REST API.
 
 ## Installation
 
@@ -61,7 +61,8 @@ Puzzles don't need cookies. Everything about you does.
 | Letter Boxed | `letter_boxed(date)` | 2018-12-17 | No |
 | Crossword | `crossword(publish_type, date=None)` | Daily 1993-11-21, Mini 2014-08-21, Midi 2026-02-25, Bonus 1997 | No |
 | Crossword schedule | `crossword_oracle(publish_type)` | Current and next puzzle | No |
-| Crossword list | `crossword_puzzles(publish_type, date_start=..., date_end=...)` | Includes your progress with cookies | Optional |
+| Puzzle list | `archive(game, date_start, date_end)` | IDs and dates for Wordle, Connections, Strands and the Daily, Mini and Midi | No |
+| Crossword list | `crossword_puzzles(publish_type, date_start=..., date_end=...)` | Daily, Mini and Bonus, with your progress when you have cookies | Optional |
 | Crossword progress | `crossword_game(puzzle_id, publish_type)` | Your saved game | Yes |
 | Wordle progress | `wordle_latest(puzzle_ids)` | Your saved games | Yes |
 | Spelling Bee progress | `spelling_bee_latest(puzzle_ids)` | Your saved games (up to 30 IDs) | Yes |
@@ -70,6 +71,14 @@ Puzzles don't need cookies. Everything about you does.
 Dates are `YYYY-MM-DD` strings. `publish_type` is `daily`, `mini`, `midi` or
 `bonus`, and `date=None` returns today's puzzle. NYT usually serves the next
 day's puzzle a day early.
+
+`archive()` is the quickest way to get puzzle IDs for a date range, for
+example to check your progress on a month of puzzles:
+
+```python
+midis = client.archive("crossword_midi", "2026-09-01", "2026-09-30")
+client.crossword_game([p.id for p in midis], "midi")   # up to 30 IDs per call
+```
 
 Spelling Bee extras:
 
@@ -122,6 +131,93 @@ Every method returns Pydantic models from `nytgames.models`. Fields NYT adds
 later are kept rather than rejected, so new NYT fields don't break your code.
 Use `.model_dump()` to get plain dicts, and `by_alias=True` to keep NYT's
 original keys, such as `"Queen Bee"` in the Spelling Bee ranks.
+
+## Command line
+
+The optional `cli` extra installs `nytg`:
+
+```bash
+pipx install "nytimes-games[cli]"     # or: pip install "nytimes-games[cli]"
+```
+
+```bash
+nytg wordle                      # today's Wordle, without the answer
+nytg wordle yesterday --answers
+nytg connections friday -a       # the groups, in their colors
+nytg strands 2025-06-12
+nytg bee --hints                 # Spelling Bee Forum style hints
+nytg letter-boxed
+nytg crossword mini              # the grid and clues
+nytg crossword daily 1993-11-21 --answers
+```
+
+Answers are hidden unless you pass `--answers`, in every output format.
+Dates can be `YYYY-MM-DD`, `today`, `yesterday`, `tomorrow` or a weekday, and
+`first` for the first puzzle in `nytg archive`.
+
+### Your stats and history
+
+Log in once with your `NYT-S` cookie (see [Cookies](#cookies)):
+
+```bash
+nytg auth login                  # paste the cookie; it's checked, then saved
+nytg auth status
+```
+
+```bash
+nytg stats                       # every game at a glance
+nytg stats crossword             # averages, bests and streaks by weekday
+nytg today                       # which of today's games you've played
+nytg history crossword --from 2026-01-01 -f csv > solves.csv
+nytg history wordle --from monday
+nytg history bee
+```
+
+Cookies are read from `--cookies`, then the `NYT_COOKIES` environment
+variable, then the active profile.
+
+### Archiving
+
+```bash
+nytg archive connections --from first --out puzzles/
+```
+
+saves each date as `puzzles/connections/YYYY-MM-DD.json`. Run it again to
+resume: saved dates are skipped. Games: `wordle`, `connections`, `strands`,
+`spelling-bee`, `letter-boxed`, `crossword-daily`, `crossword-mini` and
+`crossword-midi`.
+
+### Output formats
+
+Every command takes `--format` (`-f`), like gcloud:
+
+| Format | Output |
+|---|---|
+| `table` | Tables and grids (the default) |
+| `json`, `yaml` | All the data |
+| `csv` | One row per item, nested fields as dotted columns |
+| `value(FIELD,...)` | Tab separated values for scripts, e.g. `value(categories[0].title)` |
+
+```bash
+nytg wordle --answers -f "value(solution)"
+nytg stats -f json | jq '.[] | select(.game == "Wordle")'
+```
+
+### Profiles and settings
+
+Settings are saved per profile in `~/.config/nytg/config.ini` (readable only
+by you), similar to gcloud configurations:
+
+```bash
+nytg config set format json      # default output format for this profile
+nytg config list
+nytg --profile alice auth login  # a second NYT account
+nytg config profiles activate alice
+nytg config profiles list
+```
+
+`--profile` or `NYTG_PROFILE` picks a profile for one command. Run
+`nytg --install-completion` for shell completion.
 
 ## REST API
 
@@ -178,6 +274,7 @@ running your own instance in a container.
 
 | Route | NYT endpoint |
 |---|---|
+| `GET /archive/{game}/{date_start}/{date_end}` | `svc/games/v1/archive/{game}/{date_start}/{date_end}` |
 | `GET /connections/{date}` | `svc/connections/v2/{date}.json` |
 | `GET /crosswords/daily/today` | `svc/crosswords/v6/puzzle/daily.json` |
 | `GET /crosswords/daily/{date}` | `svc/crosswords/v6/puzzle/daily/{date}.json` |

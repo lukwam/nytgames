@@ -4,6 +4,32 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.5.0
+
+### Added
+
+- `nytg`, a command line tool, behind the `cli` extra
+  (`pip install "nytimes-games[cli]"`): puzzles for every game with answers
+  hidden unless `--answers`, Spelling Bee hints, crossword grids and clues,
+  `stats`, `today`, `history` (crossword, Wordle, Spelling Bee), resumable
+  `archive`, gcloud-style `--format` (table, json, yaml, csv, value()),
+  `auth login`, and settings and profiles in `~/.config/nytg/config.ini`.
+- `archive(game, date_start, date_end)`: the puzzles published in a date
+  range, with their IDs, for Wordle, Connections, Strands and the Daily, Mini
+  and Midi crosswords, from NYT's games archive. Ranges longer than 31 days
+  are split automatically. Also served by the API at
+  `/archive/{game}/{date_start}/{date_end}`.
+- `crossword_game()`, `wordle_latest()` and `spelling_bee_latest()` accept a
+  list of puzzle IDs.
+
+- Python 3.14 support. Python 3.15 is tested while it's in pre-release.
+
+### Fixed
+
+- `crossword_puzzles("midi")` raises `ValueError` instead of returning Daily
+  puzzles, which is what NYT's list returns for Midi; use `archive()` for
+  Midi puzzles. The API returns 400.
+
 ## 0.4.0
 
 ### Added

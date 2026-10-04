@@ -22,6 +22,7 @@ try:
     from fastapi import APIRouter
     from fastapi import Depends
     from fastapi import FastAPI
+    from fastapi import HTTPException
     from fastapi import Path
     from fastapi import Query
     from fastapi import Request
@@ -37,6 +38,8 @@ from nytgames import __version__
 from nytgames import NYTGamesClient
 from nytgames import NYTGamesParseError
 from nytgames import spelling_bee_hints
+from nytgames.models import ArchiveGame
+from nytgames.models import ArchivePuzzle
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
 from nytgames.models import CrosswordOracle
@@ -55,6 +58,7 @@ from nytgames.models import WordlePuzzlesList
 __all__ = ["add_exception_handlers", "app", "create_app", "get_client", "router"]
 
 OPENAPI_TAGS = [
+    {"name": "Archive", "description": "Puzzle IDs and dates for a date range"},
     {"name": "Connections", "description": "Connections Puzzles operations"},
     {"name": "Crosswords", "description": "Crossword Puzzles operations"},
     {"name": "Crosswords - Bonus", "description": "Crossword Bonus Puzzles operations"},
@@ -117,6 +121,34 @@ def create_app(**kwargs: Any) -> FastAPI:
     app.include_router(router)
     add_exception_handlers(app)
     return app
+
+
+# Archive
+@router.get(
+    "/archive/{game}/{date_start}/{date_end}",
+    response_model=list[ArchivePuzzle],
+    summary="List the puzzles published between two dates",
+    tags=["Archive"],
+)
+def get_archive(
+    game: ArchiveGame,
+    client: NYTGamesClient = Depends(get_client),
+    date_start: str = Path(..., examples=["2026-10-01"]),
+    date_end: str = Path(..., examples=["2026-10-31"]),
+) -> list[ArchivePuzzle]:
+    """
+    **List puzzles**
+
+    Returns the ID and print date of each puzzle between two dates for
+    connections, strands, wordle, crossword_daily, crossword_mini or
+    crossword_midi. Ranges longer than 31 days are fetched 31 days at a time.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/games/v1/archive/{game}/{date_start}/{date_end}
+    ```
+    """
+    return client.archive(game, date_start, date_end)
 
 
 # Connections
@@ -379,13 +411,16 @@ def list_crossword_puzzles(
     GET https://www.nytimes.com/svc/crosswords/v3/puzzles.json
     ```
     """
-    return client.crossword_puzzles(
-        publish_type=publish_type,
-        sort_order=sort_order,
-        sort_by=sort_by,
-        date_start=date_start,
-        date_end=date_end,
-    )
+    try:
+        return client.crossword_puzzles(
+            publish_type=publish_type,
+            sort_order=sort_order,
+            sort_by=sort_by,
+            date_start=date_start,
+            date_end=date_end,
+        )
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from None
 
 
 # Letter Boxed
