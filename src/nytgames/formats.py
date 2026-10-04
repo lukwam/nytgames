@@ -10,13 +10,16 @@ filled in, revealed and penciled squares, and (in .puz) the timer.
 
 Puzzles with gimmicks the formats can't represent, such as squares labeled
 with text or clues that wind around the grid, raise NYTGamesExportError
-with the reasons. Use ``export_problems()`` to check without exporting.
+with the reasons. Use ``export_problems()`` to check without exporting, and
+``fidelity()`` to see what an export approximates, such as shading shown as
+circles in .puz.
 
 NYT puzzles are copyrighted by The New York Times; exported files are for
 personal use.
 """
 import datetime
 import json
+import re
 import struct
 import unicodedata
 import xml.etree.ElementTree as ET
@@ -199,6 +202,55 @@ def export_problems(puzzle: CrosswordPuzzle, fmt: str) -> list[str]:
     return []
 
 
+def plural(count: int, word: str) -> str:
+    return f"{count} {word}" + ("" if count == 1 else "s")
+
+
+def fidelity(puzzle: CrosswordPuzzle, fmt: str, game: Game = None) -> list[str]:
+    """Return what exporting to a format approximates or leaves out.
+
+    An empty list means the export keeps everything. Raises
+    NYTGamesExportError if the puzzle can't be exported at all.
+    """
+    export(puzzle, fmt, game)
+    grid = to_grid(puzzle, game)
+    body = puzzle.body[0]
+    notes = []
+
+    formatted = sum(
+        1 for clue in body.clues
+        if any(re.search(r"<\s*[a-zA-Z]", part.get("formatted", "")) for part in clue.text)
+    )
+    if formatted:
+        notes.append(f"clue formatting such as italics is dropped ({plural(formatted, 'clue')})")
+    if any(cell.moreAnswers for cell in body.cells):
+        notes.append("other accepted answers for rebus squares aren't kept")
+
+    shaded = sum(square.shaded for square in grid.squares)
+    revealed = any(square.revealed for square in grid.squares)
+    penciled = any(square.penciled for square in grid.squares)
+    if fmt == "puz":
+        if shaded:
+            notes.append("1 shaded square is shown as a circle" if shaded == 1
+                         else f"{shaded} shaded squares are shown as circles")
+        texts = [grid.title, grid.notes] + [clue.text for clue in grid.across + grid.down]
+        converted = sorted({ch for text in texts for ch in text if ch in PUNCTUATION_CHARACTERS})
+        if converted:
+            notes.append(f"typographic punctuation is converted to plain text ({' '.join(converted)})")
+        if any(len(square.fill) > 1 for square in grid.squares):
+            notes.append("rebus squares you filled in keep only their first letter")
+        if penciled:
+            notes.append("penciled squares aren't marked")
+    if fmt == "ipuz":
+        if revealed or penciled:
+            notes.append("revealed and penciled squares aren't marked")
+        if grid.seconds is not None:
+            notes.append("the timer isn't kept")
+    if fmt == "xml" and grid.seconds is not None:
+        notes.append("the timer isn't kept")
+    return notes
+
+
 def export(puzzle: CrosswordPuzzle, fmt: str, game: Game = None, title: str | None = None) -> bytes:
     """Export a puzzle to ipuz, puz or xml, as the bytes of the file."""
     if fmt == "ipuz":
@@ -262,9 +314,11 @@ def to_ipuz(puzzle: CrosswordPuzzle, game: Game = None, title: str | None = None
 
 # Across Lite .puz
 
-PUNCTUATION = str.maketrans({
-    "‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "--", "…": "...", " ": " ",
-})
+PUNCTUATION_MAP = {
+    "‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "--", "…": "...", "\u00a0": " ",
+}
+PUNCTUATION = str.maketrans(PUNCTUATION_MAP)
+PUNCTUATION_CHARACTERS = set(PUNCTUATION_MAP) - {"\u00a0"}
 
 
 def latin1(text: str, what: str, problems: list[str]) -> bytes:

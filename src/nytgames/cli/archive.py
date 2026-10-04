@@ -1,5 +1,7 @@
 """nytg archive: save puzzles as JSON files, one per date."""
+import datetime
 import enum
+import hashlib
 import json
 import time
 from pathlib import Path
@@ -14,6 +16,7 @@ from rich.progress import TextColumn
 from rich.progress import TimeRemainingColumn
 
 from nytgames import NYTGamesAuthenticationError
+from nytgames import __version__
 from nytgames import NYTGamesClient
 from nytgames import NYTGamesHTTPError
 from nytgames import NYTGamesNotFoundError
@@ -70,6 +73,11 @@ def archive(
     by running the same command again. Dates without a puzzle are reported as
     missing, and crosswords that can't be saved in the --as format (some
     special puzzles) as unsupported.
+
+    OUT/GAME/manifest.json records when each file was fetched, NYT's own
+    update time, the nytimes-games version and a SHA-256 hash. With
+    --overwrite, a puzzle NYT has changed since it was saved keeps its
+    previous version in OUT/GAME/revisions/ and is listed as updated.
     """
     if file_format != "json" and (file_format not in formats.FORMATS or not game.value.startswith("crossword-")):
         raise typer.BadParameter("Use json, or puz, ipuz or xml for crosswords.", param_hint="'--as'")
@@ -83,9 +91,39 @@ def archive(
     days = list(date_range(first, last))
     result: dict[str, Optional[object]] = {"game": game.value, "directory": str(directory),
                                            "format": file_format, "saved": 0, "skipped": 0,
-                                           "missing": [], "unsupported": [], "errors": []}
+                                           "updated": [], "missing": [], "unsupported": [],
+                                           "errors": []}
+    manifest_path = directory / "manifest.json"
+    manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {"files": {}}
     columns = (TextColumn("{task.description}"), BarColumn(), MofNCompleteColumn(), TimeRemainingColumn())
-    with Progress(*columns, console=err_console, transient=True) as progress:
+    try:
+        archive_days(days, directory, file_format, overwrite, delay, fetch, manifest, result,
+                     Progress(*columns, console=err_console, transient=True), game)
+    finally:
+        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+    def table(data):
+        yield key_value_table({
+            "Saved": data["saved"],
+            "Already saved": data["skipped"],
+            "Changed by NYT": ", ".join(data["updated"]) if len(data["updated"]) <= 5
+            else f"{len(data['updated'])} dates",
+            "No puzzle": ", ".join(data["missing"]) if len(data["missing"]) <= 5
+            else f"{len(data['missing'])} dates",
+            "Can't save as " + data["format"]: len(data["unsupported"]),
+            "Errors": len(data["errors"]),
+            "Directory": data["directory"],
+        }, title=f"[bold]Archived {data['game']}[/bold]")
+
+    emit(result, fmt, table)
+    if result["errors"]:
+        raise typer.Exit(1)
+
+
+def archive_days(days, directory: Path, file_format: str, overwrite: bool, delay: float, fetch,
+                 manifest: dict, result: dict, progress_bar: Progress, game: ArchiveGame) -> None:
+    """Fetch and save each day, updating the manifest and result."""
+    with progress_bar as progress:
         task = progress.add_task(f"Archiving {game.value}", total=len(days))
         for day in days:
             path = directory / f"{day}.{file_format}"
@@ -112,25 +150,42 @@ def archive(
                         result["unsupported"].append({"date": day.isoformat(), "reasons": err.reasons})
                         content = None
                 if content is not None:
-                    tmp = path.with_name(path.name + ".tmp")
-                    tmp.write_bytes(content)
-                    tmp.replace(path)
-                    result["saved"] += 1
+                    save(path, content, day.isoformat(), puzzle, manifest, result)
             progress.advance(task)
             if delay:
                 time.sleep(delay)
 
-    def table(data):
-        yield key_value_table({
-            "Saved": data["saved"],
-            "Already saved": data["skipped"],
-            "No puzzle": ", ".join(data["missing"]) if len(data["missing"]) <= 5
-            else f"{len(data['missing'])} dates",
-            "Can't save as " + data["format"]: len(data["unsupported"]),
-            "Errors": len(data["errors"]),
-            "Directory": data["directory"],
-        }, title=f"[bold]Archived {data['game']}[/bold]")
 
-    emit(result, fmt, table)
-    if result["errors"]:
-        raise typer.Exit(1)
+def save(path: Path, content: bytes, day: str, puzzle, manifest: dict, result: dict) -> None:
+    """Write a file atomically and record it in the manifest.
+
+    If NYT has changed a puzzle since it was saved, the previous file is kept
+    in revisions/ first.
+    """
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    digest = hashlib.sha256(content).hexdigest()
+    previous = manifest["files"].get(path.name)
+    revisions = previous.get("revisions", []) if previous else []
+    if path.exists():
+        old_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if old_digest != digest:
+            fetched = (previous or {}).get("retrieved_at", "unknown").replace(":", "")
+            revision = path.parent / "revisions" / f"{path.stem}.{fetched}{path.suffix}"
+            revision.parent.mkdir(exist_ok=True)
+            path.replace(revision)
+            revisions.append({"file": f"revisions/{revision.name}", "sha256": old_digest,
+                              "retrieved_at": (previous or {}).get("retrieved_at")})
+            result["updated"].append(day)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(content)
+    tmp.replace(path)
+    manifest["files"][path.name] = {
+        "date": day,
+        "puzzle_id": getattr(puzzle, "id", None),
+        "retrieved_at": now,
+        "nyt_updated": getattr(puzzle, "lastUpdated", None),
+        "sha256": digest,
+        "nytimes_games": __version__,
+        **({"revisions": revisions} if revisions else {}),
+    }
+    result["saved"] += 1

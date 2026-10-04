@@ -263,6 +263,8 @@ def save_crossword(client, puzzle, kind: str, path: Path, progress: bool) -> Non
         raise typer.Exit(1) from None
     path.write_bytes(data)
     console.print(f"Saved [bold]{path}[/bold]" + (" with your progress" if progress else ""))
+    for note in formats.fidelity(puzzle, fmt, game):
+        console.print(f"[dim]Note: {note}[/dim]")
 
 
 class CrosswordType(str, enum.Enum):

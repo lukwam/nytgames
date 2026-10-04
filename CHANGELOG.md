@@ -16,6 +16,15 @@ versions may include breaking changes.
   `.squares()`, `StrandsPuzzle.words()` (words with their paths) and
   `ConnectionsPuzzle.board()`. Special puzzles are kept as they are.
 
+- `formats.fidelity(puzzle, fmt, game=None)`: what an export approximates or
+  leaves out, such as shading shown as circles in .puz or italics in clues.
+  `nytg crossword --save` prints these notes.
+- `nytg archive` keeps a `manifest.json` per game with each file's retrieval
+  time, NYT's update time, the nytimes-games version and a SHA-256 hash.
+  With `--overwrite`, puzzles NYT has changed keep their previous version
+  in `revisions/` and are reported as changed.
+- A README capability matrix: what each method returns and which fields are
+  spoilers.
 - Retries with exponential backoff for failed connections, timeouts, rate
   limits and NYT server errors, honoring `Retry-After`
   (`NYTGamesClient(retries=3, backoff=0.5)`). Sessions you pass in are used
