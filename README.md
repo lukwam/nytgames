@@ -163,6 +163,58 @@ later are kept rather than rejected, so new NYT fields don't break your code.
 Use `.model_dump()` to get plain dicts, and `by_alias=True` to keep NYT's
 original keys, such as `"Queen Bee"` in the Spelling Bee ranks.
 
+## Async apps
+
+`NYTGamesClient` is synchronous, but works in async apps as long as its calls
+run outside the event loop.
+
+**FastAPI:** declare routes with plain `def`. FastAPI runs those in a thread
+pool, so the client's requests don't block the event loop. (The routes in
+`nytgames.api` work this way.)
+
+```python
+from fastapi import FastAPI
+from nytgames import NYTGamesClient
+
+app = FastAPI()
+client = NYTGamesClient()
+
+
+@app.get("/wordle/{date}")
+def wordle(date: str):
+    return client.wordle(date)
+```
+
+In an `async def` route, use `await run_in_threadpool(client.wordle, date)`
+(from `fastapi.concurrency`) instead of calling the client directly.
+
+**Other asyncio code** (bots, aiohttp, scripts): run calls with
+`asyncio.to_thread`. To fetch several puzzles at once, limit how many run at
+a time to be polite to NYT, and give each task its own client, since
+`requests` sessions aren't guaranteed to be thread safe:
+
+```python
+import asyncio
+from nytgames import NYTGamesClient
+
+
+async def connections(dates: list[str]):
+    limit = asyncio.Semaphore(4)
+
+    async def fetch(day: str):
+        async with limit:
+            return await asyncio.to_thread(NYTGamesClient().connections, day)
+
+    return await asyncio.gather(*(fetch(day) for day in dates))
+
+
+puzzles = asyncio.run(connections(["2025-06-10", "2025-06-11", "2025-06-12"]))
+```
+
+In Home Assistant, use `await hass.async_add_executor_job(client.wordle, date)`.
+A native async client is tracked in
+[#19](https://github.com/lukwam/nytimes-games/issues/19).
+
 ## Command line
 
 The optional `cli` extra installs `nytg`:
