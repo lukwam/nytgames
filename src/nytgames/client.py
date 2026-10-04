@@ -1,4 +1,5 @@
 """NYT Games client."""
+import datetime
 import json
 import logging
 import re
@@ -14,6 +15,8 @@ from nytgames.exceptions import NYTGamesAuthenticationError
 from nytgames.exceptions import NYTGamesHTTPError
 from nytgames.exceptions import NYTGamesNotFoundError
 from nytgames.exceptions import NYTGamesParseError
+from nytgames.models import ArchiveGame
+from nytgames.models import ArchivePuzzle
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
 from nytgames.models import CrosswordOracle
@@ -33,6 +36,8 @@ from nytgames.models import WordlePuzzlesList
 logger = logging.getLogger(__name__)
 
 NYT_BASE_URL = "https://www.nytimes.com"
+# NYT's games archive returns at most 31 days per request.
+ARCHIVE_DAYS = 31
 USER_AGENT = f"nytimes-games/{__version__} (+https://github.com/lukwam/nytimes-games)"
 
 Cookies = Mapping[str, str] | Iterable[Mapping[str, Any]] | str | None
@@ -127,6 +132,32 @@ class NYTGamesClient:
             raise error_class(str(err), response=response) from err
         return response.json() if json_response else response
 
+    # Archive
+    def archive(
+        self,
+        game: ArchiveGame | str,
+        date_start: str,
+        date_end: str,
+    ) -> list[ArchivePuzzle]:
+        """Return the puzzles published between two dates (YYYY-MM-DD), inclusive.
+
+        `game` is connections, strands, wordle, crossword_daily, crossword_mini
+        or crossword_midi. Each puzzle has its ID and print date, so this is the
+        quickest way to find puzzle IDs for the game state methods. Doesn't
+        need cookies. NYT allows 31 days per request, so longer ranges are
+        fetched 31 days at a time. Future dates are not included.
+        """
+        game = ArchiveGame(game).value
+        start = datetime.date.fromisoformat(date_start)
+        end = datetime.date.fromisoformat(date_end)
+        puzzles = []
+        while start <= end:
+            window_end = min(start + datetime.timedelta(days=ARCHIVE_DAYS - 1), end)
+            response = self._get(f"/svc/games/v1/archive/{game}/{start}/{window_end}")
+            puzzles.extend(ArchivePuzzle(**puzzle) for puzzle in response)
+            start = window_end + datetime.timedelta(days=1)
+        return puzzles
+
     # Connections
     def connections(self, date: str) -> ConnectionsPuzzle:
         """Return the Connections puzzle for a date (YYYY-MM-DD)."""
@@ -160,15 +191,15 @@ class NYTGamesClient:
 
         `publish_type` is daily, mini or bonus. NYT returns at most 100 puzzles
         per request. NYT's list doesn't include Midi puzzles (it returns Daily
-        puzzles instead), so `midi` raises ValueError; use crossword("midi",
-        date) and crossword_game() for Midi puzzles.
+        puzzles instead), so `midi` raises ValueError; use
+        archive("crossword_midi", ...) and crossword_game() for Midi puzzles.
         """
         if publish_type is not None:
             publish_type = CrosswordPublishType(publish_type).value
             if publish_type == CrosswordPublishType.midi.value:
                 raise ValueError(
                     "NYT's crossword list doesn't include Midi puzzles; "
-                    'use crossword("midi", date) and crossword_game() instead'
+                    'use archive("crossword_midi", ...) and crossword_game() instead'
                 )
         params = {
             "publish_type": publish_type,

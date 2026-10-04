@@ -30,7 +30,9 @@ STATE_BATCH = 30
 # NYT's crossword list returns at most 100 puzzles per request.
 LIST_DAYS = 90
 
-FromOption = Annotated[Optional[str], typer.Option("--from", help="First date (default: 30 days ago).")]
+FromOption = Annotated[
+    Optional[str], typer.Option("--from", help='First date, or "first" (default: 30 days ago).')
+]
 ToOption = Annotated[Optional[str], typer.Option("--to", help="Last date (default: today).")]
 
 
@@ -280,9 +282,9 @@ def today(fmt: FormatOption = None) -> None:
     emit(rows, fmt, table)
 
 
-def date_window(start: str | None, end: str | None) -> tuple[datetime.date, datetime.date]:
-    last = date_arg(end) if end else nyt_today()
-    first = date_arg(start) if start else last - datetime.timedelta(days=29)
+def date_window(start: str | None, end: str | None, game: str) -> tuple[datetime.date, datetime.date]:
+    last = date_arg(end, game) if end else nyt_today()
+    first = date_arg(start, game) if start else last - datetime.timedelta(days=29)
     if first > last:
         raise typer.BadParameter("--from is after --to")
     return first, last
@@ -311,20 +313,14 @@ def crossword_results(client, kind: str, first: datetime.date, last: datetime.da
     """Return the user's crossword results for a date range.
 
     Daily, Mini and Bonus puzzles come from NYT's crossword list, 90 days at a
-    time. That list doesn't include Midi puzzles, so for the Midi each date's
-    puzzle is fetched and its progress read from the saved game state.
+    time. That list doesn't include Midi puzzles, so Midi puzzles come from the
+    games archive and their progress from the saved game states.
     """
     puzzles = []
     if kind == "midi":
-        days = list(date_range(first, last))
-        for day in progress(days, len(days), "Fetching puzzles"):
-            try:
-                puzzle = client.crossword("midi", day.isoformat())
-            except NYTGamesNotFoundError:
-                continue
-            puzzles.append({"date": day.isoformat(), "puzzle_id": puzzle.id,
-                            "title": (puzzle.model_extra or {}).get("title") or "",
-                            "author": ", ".join(puzzle.constructors)})
+        for puzzle in client.archive("crossword_midi", first.isoformat(), last.isoformat()):
+            puzzles.append({"date": puzzle.print_date, "puzzle_id": puzzle.id,
+                            "title": "", "author": puzzle.byline or ""})
     else:
         window_start = first
         while window_start <= last:
@@ -376,8 +372,8 @@ def history_crossword(
     fmt: FormatOption = None,
 ) -> None:
     """Your crossword results: solved, solve time, gold star and help used."""
-    first, last = date_window(start, end)
     kind = publish_type.value
+    first, last = date_window(start, end, f"crossword-{kind}")
     rows = crossword_results(state.client(), kind, first, last)
 
     def table(data):
@@ -404,14 +400,8 @@ def history_crossword(
 def history_wordle(start: FromOption = None, end: ToOption = None, fmt: FormatOption = None) -> None:
     """Your Wordle results: won or lost, and guesses."""
     client = state.client()
-    first, last = date_window(start, end)
-    days = list(date_range(first, last))
-    ids = {}
-    for day in progress(days, len(days), "Fetching puzzles"):
-        try:
-            ids[client.wordle(day.isoformat()).id] = day.isoformat()
-        except NYTGamesNotFoundError:
-            pass
+    first, last = date_window(start, end, "wordle")
+    ids = {p.id: p.print_date for p in client.archive("wordle", first.isoformat(), last.isoformat())}
     states = {}
     for batch in chunks(list(ids), STATE_BATCH):
         for game in client.wordle_latest(batch).states:
@@ -444,7 +434,7 @@ def history_wordle(start: FromOption = None, end: ToOption = None, fmt: FormatOp
 def history_bee(start: FromOption = None, end: ToOption = None, fmt: FormatOption = None) -> None:
     """Your Spelling Bee results: rank and words found."""
     client = state.client()
-    first, last = date_window(start, end)
+    first, last = date_window(start, end, "spelling-bee")
     days = list(date_range(first, last))
     puzzles = {}
     for day in progress(days, len(days), "Fetching puzzles"):

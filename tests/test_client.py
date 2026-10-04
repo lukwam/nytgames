@@ -214,3 +214,32 @@ def test_crossword_puzzles_rejects_midi(session):
     with pytest.raises(ValueError, match="Midi"):
         NYTGamesClient(session=session).crossword_puzzles("midi")
     session.get.assert_not_called()
+
+
+def test_archive_fetches_31_days_at_a_time(session):
+    """The games archive allows 31 days per request, so longer ranges are split."""
+    session.get.return_value.json.side_effect = [
+        [{"id": 1, "print_date": "2026-01-01", "byline": "A"}],
+        [{"id": 2, "print_date": "2026-02-01", "byline": "B"}],
+        [{"id": 3, "print_date": "2026-03-04", "byline": "C"}],
+    ]
+    puzzles = NYTGamesClient(session=session).archive("crossword_midi", "2026-01-01", "2026-03-04")
+    assert [p.id for p in puzzles] == [1, 2, 3]
+    assert [c.args[0].rsplit("/svc/games/v1/archive/", 1)[1] for c in session.get.call_args_list] == [
+        "crossword_midi/2026-01-01/2026-01-31",
+        "crossword_midi/2026-02-01/2026-03-03",
+        "crossword_midi/2026-03-04/2026-03-04",
+    ]
+
+
+def test_archive_keeps_game_specific_fields(session):
+    session.get.return_value.json.return_value = [
+        {"id": 1421, "print_date": "2026-10-04", "solution": "shack", "days_since_launch": 1933}]
+    puzzle = NYTGamesClient(session=session).archive("wordle", "2026-10-04", "2026-10-04")[0]
+    assert puzzle.model_dump()["solution"] == "shack"
+
+
+def test_archive_rejects_unknown_games(session):
+    with pytest.raises(ValueError):
+        NYTGamesClient(session=session).archive("spelling_bee", "2026-10-04", "2026-10-04")
+    session.get.assert_not_called()

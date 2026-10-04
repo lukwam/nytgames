@@ -8,10 +8,12 @@ from nytgames.exceptions import NYTGamesError  # noqa: E402
 from nytgames.exceptions import NYTGamesHTTPError  # noqa: E402
 from nytgames.exceptions import NYTGamesNotFoundError  # noqa: E402
 from nytgames.exceptions import NYTGamesParseError  # noqa: E402
+from nytgames.models import ArchiveGame  # noqa: E402
 from nytgames.models import CrosswordPublishType  # noqa: E402
 from nytgames.spelling_bee import spelling_bee_hints  # noqa: E402
 
 __all__ = [
+    "ArchiveGame",
     "CrosswordPublishType",
     "NYTGamesAuthenticationError",
     "NYTGamesClient",

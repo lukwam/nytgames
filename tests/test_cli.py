@@ -18,11 +18,13 @@ from nytgames.cli import dates
 from nytgames.cli import app as cli_main
 from nytgames.cli import output
 from nytgames.cli.state import State
+from nytgames.models import ArchivePuzzle
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
 from nytgames.models import CrosswordPuzzlesList
 from nytgames.models import Player
 from nytgames.models import WordlePuzzle
+from nytgames.models import WordlePuzzlesList
 
 runner = CliRunner()
 
@@ -231,9 +233,8 @@ def test_history_crossword_fetches_the_list_in_windows(client):
     assert windows == [("2026-01-01", "2026-03-31"), ("2026-04-01", "2026-06-29"), ("2026-06-30", "2026-06-30")]
 
 
-def test_history_midi_reads_each_puzzle_and_its_game_state(client):
-    puzzle = mock.Mock(id=23834, constructors=["Paolo Pasco"], model_extra={})
-    client.crossword.return_value = puzzle
+def test_history_midi_uses_the_archive_and_game_states(client):
+    client.archive.return_value = [ArchivePuzzle(id=23834, print_date="2026-10-04", byline="Paolo Pasco")]
     client.crossword_game.return_value = CrosswordGame(user_id=1, states=[{
         "game": "crossword_midi", "print_date": "2026-10-04", "puzzle_id": "23834",
         "timestamp": 0, "user_id": 1,
@@ -245,7 +246,24 @@ def test_history_midi_reads_each_puzzle_and_its_game_state(client):
 
     row = json.loads(result.stdout)[0]
     assert (row["solved"], row["seconds"], row["star"], row["author"]) == (True, 227, "gold", "Paolo Pasco")
+    client.archive.assert_called_once_with("crossword_midi", "2026-10-04", "2026-10-04")
     client.crossword_puzzles.assert_not_called()
+    client.crossword_game.assert_called_once_with([23834], "midi")
+
+
+def test_history_wordle_uses_the_archive(client):
+    client.archive.return_value = [ArchivePuzzle(id=1421, print_date="2026-10-04", solution="shack")]
+    client.wordle_latest.return_value = WordlePuzzlesList(user_id=1, states=[{
+        "game": "wordleV2", "print_date": "2026-10-04", "puzzle_id": "1421", "timestamp": 0, "user_id": 1,
+        "game_data": {"boardState": ["adieu", "shack", "", "", "", ""], "currentRowIndex": 2,
+                      "hardMode": True, "status": "WIN"},
+    }])
+
+    rows = json.loads(run("history", "wordle", "--from", "2026-10-04", "-f", "json").stdout)
+
+    assert rows == [{"date": "2026-10-04", "puzzle_id": 1421, "status": "win", "guesses": 2,
+                     "hard_mode": True, "board": ["adieu", "shack"]}]
+    client.wordle.assert_not_called()
 
 
 def test_cli_extra_message_when_typer_is_missing(monkeypatch):

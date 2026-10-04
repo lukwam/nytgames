@@ -61,7 +61,8 @@ Puzzles don't need cookies. Everything about you does.
 | Letter Boxed | `letter_boxed(date)` | 2018-12-17 | No |
 | Crossword | `crossword(publish_type, date=None)` | Daily 1993-11-21, Mini 2014-08-21, Midi 2026-02-25, Bonus 1997 | No |
 | Crossword schedule | `crossword_oracle(publish_type)` | Current and next puzzle | No |
-| Crossword list | `crossword_puzzles(publish_type, date_start=..., date_end=...)` | Includes your progress with cookies | Optional |
+| Puzzle list | `archive(game, date_start, date_end)` | IDs and dates for Wordle, Connections, Strands and the Daily, Mini and Midi | No |
+| Crossword list | `crossword_puzzles(publish_type, date_start=..., date_end=...)` | Daily, Mini and Bonus, with your progress when you have cookies | Optional |
 | Crossword progress | `crossword_game(puzzle_id, publish_type)` | Your saved game | Yes |
 | Wordle progress | `wordle_latest(puzzle_ids)` | Your saved games | Yes |
 | Spelling Bee progress | `spelling_bee_latest(puzzle_ids)` | Your saved games (up to 30 IDs) | Yes |
@@ -70,6 +71,14 @@ Puzzles don't need cookies. Everything about you does.
 Dates are `YYYY-MM-DD` strings. `publish_type` is `daily`, `mini`, `midi` or
 `bonus`, and `date=None` returns today's puzzle. NYT usually serves the next
 day's puzzle a day early.
+
+`archive()` is the quickest way to get puzzle IDs for a date range, for
+example to check your progress on a month of puzzles:
+
+```python
+midis = client.archive("crossword_midi", "2026-09-01", "2026-09-30")
+client.crossword_game([p.id for p in midis], "midi")   # up to 30 IDs per call
+```
 
 Spelling Bee extras:
 
@@ -265,6 +274,7 @@ running your own instance in a container.
 
 | Route | NYT endpoint |
 |---|---|
+| `GET /archive/{game}/{date_start}/{date_end}` | `svc/games/v1/archive/{game}/{date_start}/{date_end}` |
 | `GET /connections/{date}` | `svc/connections/v2/{date}.json` |
 | `GET /crosswords/daily/today` | `svc/crosswords/v6/puzzle/daily.json` |
 | `GET /crosswords/daily/{date}` | `svc/crosswords/v6/puzzle/daily/{date}.json` |
