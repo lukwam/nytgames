@@ -166,6 +166,17 @@ class CrosswordPuzzlesList(NYTModel):
     status: str
 
 
+class LetterBoxedPuzzle(NYTModel):
+    """Letter Boxed Puzzle."""
+    id: int
+    dictionary: List[str]
+    editor: str | None = None
+    ourSolution: List[str]
+    par: int
+    printDate: str
+    sides: List[str]
+
+
 class SpellingBeeGameDay(NYTModel):
     """Spelling Bee Game Day."""
     id: int
