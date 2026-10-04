@@ -283,3 +283,26 @@ def test_request_errors_are_reported(client, monkeypatch, capsys):
     with pytest.raises(SystemExit):
         cli_main.main()
     assert "Request to NYT failed" in capsys.readouterr().err
+
+
+def test_archive_manifest_and_revisions(client, tmp_path):
+    out = tmp_path / "archive"
+    client.wordle.return_value = WORDLE
+    args = ["archive", "wordle", "--from", "2025-06-12", "--to", "2025-06-12", "-o", str(out), "--delay", "0",
+            "-f", "json"]
+
+    assert json.loads(run(*args).stdout)["saved"] == 1
+    manifest = json.loads((out / "wordle" / "manifest.json").read_text())["files"]["2025-06-12.json"]
+    assert manifest["puzzle_id"] == 919 and len(manifest["sha256"]) == 64 and manifest["retrieved_at"]
+
+    unchanged = json.loads(run(*args, "--overwrite").stdout)
+    assert unchanged["updated"] == [] and not (out / "wordle" / "revisions").exists()
+
+    client.wordle.return_value = WORDLE.model_copy(update={"solution": "vixen", "editor": "Fixed"})
+    changed = json.loads(run(*args, "--overwrite").stdout)
+    assert changed["updated"] == ["2025-06-12"]
+    revisions = list((out / "wordle" / "revisions").iterdir())
+    assert len(revisions) == 1 and json.loads(revisions[0].read_text())["editor"] == "Tracy Bennett"
+    assert json.loads((out / "wordle" / "2025-06-12.json").read_text())["editor"] == "Fixed"
+    record = json.loads((out / "wordle" / "manifest.json").read_text())["files"]["2025-06-12.json"]
+    assert record["revisions"][0]["file"] == f"revisions/{revisions[0].name}"

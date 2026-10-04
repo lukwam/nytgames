@@ -17,6 +17,7 @@ from typer.testing import CliRunner
 from nytgames import NYTGamesExportError
 from nytgames.formats import export
 from nytgames.formats import export_problems
+from nytgames.formats import fidelity
 from nytgames.formats import to_ipuz
 from nytgames.formats import to_puz
 from nytgames.formats import to_xml
@@ -200,3 +201,16 @@ def test_api_download(monkeypatch):
         response = TestClient(api.app).get("/crosswords/mini/2025-06-12/download")
         assert response.status_code == 422
         assert "squares labeled with text (CW)" in response.json()["detail"]["reasons"]
+
+
+def test_fidelity():
+    p = puzzle(**{"body.0.clues.0.text": [{"plain": "In italics", "formatted": "In <i>italics</i>"}]})
+    assert fidelity(p, "ipuz") == ["clue formatting such as italics is dropped (1 clue)",
+                                   "other accepted answers for rebus squares aren't kept"]
+    puz_notes = fidelity(p, "puz", GAME)
+    assert "1 shaded square is shown as a circle" in puz_notes
+    assert "typographic punctuation is converted to plain text (– …)" in puz_notes
+    assert "penciled squares aren't marked" in puz_notes
+    assert "the timer isn't kept" in fidelity(p, "xml", GAME)
+    with pytest.raises(NYTGamesExportError):
+        fidelity(puzzle(**{"body.0.cells.0.label": "CW"}), "ipuz")

@@ -56,21 +56,31 @@ stats.crossword_daily.dailyStats["monday"].avgTimeSeconds
 
 Puzzles don't need cookies. Everything about you does.
 
-| Game | Method | Available from | Cookies |
-|---|---|---|---|
-| Wordle | `wordle(date)` | 2021-06-19 | No |
-| Connections | `connections(date)` | 2023-06-12 | No |
-| Strands | `strands(date)` | 2024-03-04 | No |
-| Spelling Bee | `spelling_bee_puzzle(date)` | 2018-05-06 | No |
-| Letter Boxed | `letter_boxed(date)` | 2018-12-17 | No |
-| Crossword | `crossword(publish_type, date=None)` | Daily 1993-11-21, Mini 2014-08-21, Midi 2026-02-25, Bonus 1997 | No |
-| Crossword schedule | `crossword_oracle(publish_type)` | Current and next puzzle | No |
-| Puzzle list | `archive(game, date_start, date_end)` | IDs and dates for Wordle, Connections, Strands and the Daily, Mini and Midi | No |
-| Crossword list | `crossword_puzzles(publish_type, date_start=..., date_end=...)` | Daily, Mini and Bonus, with your progress when you have cookies | Optional |
-| Crossword progress | `crossword_game(puzzle_id, publish_type)` | Your saved game | Yes |
-| Wordle progress | `wordle_latest(puzzle_ids)` | Your saved games | Yes |
-| Spelling Bee progress | `spelling_bee_latest(puzzle_ids)` | Your saved games (up to 30 IDs) | Yes |
-| Stats | `player_stats()` | Every game you've played | Yes |
+### Puzzles
+
+| Game | Method | Available from | What you get | Spoilers |
+|---|---|---|---|---|
+| Wordle | `wordle(date)` | 2021-06-19 | Puzzle number, editor | `solution` |
+| Connections | `connections(date)` | 2023-06-12 | The 16 cards (words or pictures) and starting board | `categories` (the groups) |
+| Strands | `strands(date)` | 2024-03-04 | Theme clue and letter board | `spangram`, `themeWords`, word paths |
+| Spelling Bee | `spelling_bee_puzzle(date)` | 2018-05-06 | Letters, word and pangram counts, forum-style hints | `answers`, `pangrams` |
+| Letter Boxed | `letter_boxed(date)` | 2018-12-17 | Sides, par, every accepted word | `ourSolution` |
+| Crossword | `crossword(publish_type, date=None)` | Daily 1993-11-21, Mini 2014-08-21, Midi 2026-02-25, Bonus 1997 | Grid, clues, entries, rebus, circles and shading | cell `answer`s |
+| Crossword schedule | `crossword_oracle(publish_type)` | Current and next puzzle | Puzzle IDs and publish times | |
+| Puzzle list | `archive(game, date_start, date_end)` | Wordle, Connections, Strands, Daily, Mini, Midi | Puzzle IDs and dates for a range | Wordle `solution` |
+
+### You (needs your NYT-S cookie)
+
+| Data | Method | What you get |
+|---|---|---|
+| Stats | `player_stats()` | Streaks, win rates and distributions for every game you've played |
+| Crossword progress | `crossword_game(puzzle_ids, publish_type)` | Your filled squares, time, gold star, revealed and checked squares (up to 30 puzzles per call) |
+| Crossword list | `crossword_puzzles(publish_type, date_start=..., date_end=...)` | Daily, Mini and Bonus puzzles with your solved status and star (90 days or less per call) |
+| Wordle progress | `wordle_latest(puzzle_ids)` | Your guesses and result |
+| Spelling Bee progress | `spelling_bee_latest(puzzle_ids)` | Words you found and your rank (up to 30 puzzles per call) |
+
+NYT doesn't record individual solve events, so progress means your saved
+game: the current state and totals, not a history of each move.
 
 Dates are `YYYY-MM-DD` strings. `publish_type` is `daily`, `mini`, `midi` or
 `bonus`, and `date=None` returns today's puzzle. NYT usually serves the next
@@ -136,7 +146,9 @@ formats.export(puzzle, "ipuz")                                   # any format, a
 A few special puzzles use gimmicks these formats can't represent, such as
 squares labeled with text or clues that wind around the grid. Exporting them
 raises `NYTGamesExportError`, whose `reasons` say why; `export_problems(puzzle,
-fmt)` returns the reasons without exporting. Exported files are for personal
+fmt)` returns the reasons without exporting. `fidelity(puzzle, fmt)` lists
+what an export approximates, such as italics in clues or shading shown as
+circles in `.puz`. Exported files are for personal
 use: the puzzles are copyrighted by The New York Times.
 
 Spelling Bee extras:
@@ -317,7 +329,9 @@ nytg archive connections --from first --out puzzles/
 ```
 
 saves each date as `puzzles/connections/YYYY-MM-DD.json`. Run it again to
-resume: saved dates are skipped. Crosswords can be archived as crossword files
+resume: saved dates are skipped. A `manifest.json` records when each file was
+fetched, NYT's update time and a hash; with `--overwrite`, puzzles NYT has
+since changed keep their previous version in `revisions/`. Crosswords can be archived as crossword files
 with `--as puz`, `--as ipuz` or `--as xml`; puzzles that can't be saved in that
 format are listed as unsupported. Games: `wordle`, `connections`, `strands`,
 `spelling-bee`, `letter-boxed`, `crossword-daily`, `crossword-mini` and
