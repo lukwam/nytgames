@@ -39,6 +39,7 @@ def register(app: typer.Typer) -> None:
     """Add the player commands to the root app."""
     app.command("stats")(stats)
     app.command("today")(today)
+    app.command("wordlebot")(wordlebot)
     history = typer.Typer(help="Your results for a range of dates.", no_args_is_help=True)
     history.command("crossword")(history_crossword)
     history.command("wordle")(history_wordle)
@@ -468,3 +469,123 @@ def history_bee(start: FromOption = None, end: ToOption = None, fmt: FormatOptio
         yield t
 
     emit(rows, fmt, table)
+
+
+def skill_rank(efficiency: float | None, percentiles: dict | None) -> list | None:
+    """Return the [low, high] percentiles a skill score falls between.
+
+    NYT publishes only some percentiles (e.g. p25 and p75 but nothing between),
+    so this is a range. 0 means below the lowest published percentile and
+    100 above the highest.
+    """
+    if efficiency is None or not percentiles:
+        return None
+    points = sorted((int(key[1:]), value) for key, value in percentiles.items() if key[1:].isdigit())
+    low = max((p for p, value in points if efficiency >= value), default=0)
+    high = min((p for p, value in points if efficiency < value), default=100)
+    return [low, high]
+
+
+def describe_rank(rank: list) -> str:
+    low, high = rank
+    if high == 100:
+        return f"your skill was above the {low}th percentile"
+    if low == 0:
+        return f"your skill was below the {high}th percentile"
+    return f"your skill was between the {low}th and {high}th percentiles"
+
+
+def wordlebot(
+    date: Annotated[str, typer.Argument(help="YYYY-MM-DD, today, yesterday or a weekday.")] = "today",
+    answers: Annotated[bool, typer.Option("--answers", "-a", help="Show the bot's solve paths.")] = False,
+    fmt: FormatOption = None,
+) -> None:
+    """WordleBot: your luck and skill today, and how everyone did on any day.
+
+    Your own analysis needs cookies and is only available for today's game,
+    after you've opened WordleBot.
+    """
+    client = state.client()
+    day = date_arg(date, "wordle")
+    puzzle = client.wordle(day.isoformat())
+    summary = client.wordlebot_summary(day.isoformat(), solution=puzzle.solution)
+
+    mine = None
+    if day == nyt_today() and state.resolve_cookies()[0]:
+        mine = client.wordlebot()
+        if mine is not None and mine.gameNumber != puzzle.days_since_launch:
+            mine = None
+    mode = (mine.mode if mine and mine.mode in ("normal", "hard") else "normal")
+
+    def by_mode(values):
+        return (values or {}).get(mode)
+
+    data = {
+        "date": day.isoformat(),
+        "number": puzzle.days_since_launch,
+        "mode": mode,
+        "everyone": {
+            "players": (summary.steps or {}).get(f"{mode}Users"),
+            "average_guesses": by_mode(summary.average),
+            "skill": by_mode(summary.efficiency),
+            "luck": by_mode(summary.luck),
+            "solved_in_three_or_fewer": by_mode(summary.percentSolvingInThreeOrFewer),
+        },
+    }
+    if mine is not None:
+        data["you"] = {
+            "guesses": mine.guess_list,
+            "skill": mine.efficiency,
+            "luck": mine.luck,
+            "skill_percentile_range": skill_rank(mine.efficiency, by_mode(summary.percentiles)),
+            "skill_by_round": mine.efficiencyByRound,
+            "luck_by_round": mine.luckByRound,
+        }
+    if answers:
+        data["bot_paths"] = summary.guesses or {}
+
+    def table(data):
+        everyone, you = data["everyone"], data.get("you")
+        t = Table(title=f"WordleBot: Wordle {data['number']} ({data['date']}), {data['mode']} mode",
+                  title_justify="left", header_style="bold")
+        t.add_column("")
+        if you:
+            t.add_column("You", justify="right")
+        t.add_column("Everyone", justify="right")
+
+        def score(value):
+            return "" if value is None else f"{100 * value:.0f}"
+
+        rows = [("Skill", score(you["skill"]) if you else None, score(everyone["skill"])),
+                ("Luck", score(you["luck"]) if you else None, score(everyone["luck"])),
+                ("Guesses", str(len(you["guesses"])) if you else None,
+                 f"{everyone['average_guesses']:.2f}" if everyone["average_guesses"] else "")]
+        for label, mine_value, all_value in rows:
+            t.add_row(label, *([mine_value] if you else []), all_value)
+        yield t
+        details = []
+        if everyone["players"]:
+            details.append(f"{everyone['players']:,} players")
+        if everyone["solved_in_three_or_fewer"] is not None:
+            details.append(f"{100 * everyone['solved_in_three_or_fewer']:.0f}% solved in 3 or fewer")
+        if you and you["skill_percentile_range"]:
+            details.append(describe_rank(you["skill_percentile_range"]))
+        if details:
+            yield Text(", ".join(details), style="dim")
+        if you:
+            rounds = Table(title="By round", title_justify="left", header_style="bold")
+            for column in ("Round", "Guess", "Skill", "Luck"):
+                rounds.add_column(column, justify="left" if column == "Guess" else "right")
+            for i, guess in enumerate(you["guesses"]):
+                rounds.add_row(str(i + 1), guess.upper(),
+                               score(you["skill_by_round"][i]) if i < len(you["skill_by_round"]) else "",
+                               score(you["luck_by_round"][i]) if i < len(you["luck_by_round"]) else "")
+            yield rounds
+        elif data["date"] == nyt_today().isoformat():
+            yield Text("Your own analysis appears after you play and open WordleBot "
+                       "(and needs your cookies).", style="dim")
+        if "bot_paths" in data:
+            for strategy, path in data["bot_paths"].items():
+                yield Text.assemble((f"{strategy}: ", "bold"), " → ".join(w.upper() for w in path))
+
+    emit(data, fmt, table)

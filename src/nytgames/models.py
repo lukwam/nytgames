@@ -581,3 +581,48 @@ class WordlePuzzlesList(NYTModel):
 
 
 CrosswordGame.model_rebuild()
+
+
+class WordleBotAnalysis(NYTModel):
+    """Your WordleBot analysis of a Wordle game.
+
+    `luck` and `efficiency` (WordleBot's skill score) are from 0 to 1, for
+    the whole game and for each round.
+    """
+    gameNumber: int
+    guesses: str
+    mode: str | None = None
+    luck: float | None = None
+    efficiency: float | None = None
+    luckByRound: List[float] = []
+    efficiencyByRound: List[float] = []
+    solution: str | None = None
+    solutionsRemaining: int | None = None
+    created_at: str | None = None
+    response_id: str | None = None
+
+    @property
+    def guess_list(self) -> List[str]:
+        """Your guesses as a list."""
+        return [guess for guess in self.guesses.split("-") if guess]
+
+
+class WordleBotSummary(NYTModel):
+    """How everyone did on a day's Wordle, from WordleBot.
+
+    Most values are keyed by mode: "normal" and "hard", and in recent years
+    "normal-ps" and "hard-ps". `steps` lists how many players solved it in
+    1 to 6 guesses and how many didn't. `percentiles` are of the skill
+    (`efficiency`) score. `guesses` has the bot's solve paths, keyed by
+    strategy such as "normal-simple", and includes the solution.
+    """
+    average: Dict[str, float | None] | None = None
+    botUserAverage: Dict[str, float | None] | None = None
+    efficiency: Dict[str, float | None] | None = None
+    luck: Dict[str, float | None] | None = None
+    steps: Dict[str, Any] | None = None
+    botUserSteps: Dict[str, Any] | None = None
+    unsolvedPenalty: Dict[str, float | None] | None = None
+    percentSolvingInThreeOrFewer: Dict[str, float | None] | None = None
+    percentiles: Dict[str, Dict[str, float]] | None = None
+    guesses: Dict[str, List[str]] | None = None

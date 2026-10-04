@@ -55,6 +55,8 @@ from nytgames.models import SpellingBeeGameData
 from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
 from nytgames.models import StrandsPuzzle
+from nytgames.models import WordleBotAnalysis
+from nytgames.models import WordleBotSummary
 from nytgames.models import WordlePuzzle
 from nytgames.models import WordlePuzzlesList
 
@@ -73,6 +75,7 @@ OPENAPI_TAGS = [
     {"name": "Spelling Bee", "description": "Spelling Bee Puzzles operations"},
     {"name": "Strands", "description": "Strands Puzzles operations"},
     {"name": "Wordle", "description": "Wordle Puzzles operations"},
+    {"name": "WordleBot", "description": "WordleBot analysis and daily summaries"},
 ]
 
 router = APIRouter()
@@ -698,6 +701,52 @@ def get_wordle_puzzle(
     ```
     """
     return client.wordle(date)
+
+
+# WordleBot
+@router.get(
+    "/wordlebot",
+    response_model=Optional[WordleBotAnalysis],
+    summary="Get your WordleBot analysis of today's Wordle",
+    tags=["WordleBot"])
+def get_wordlebot(client: NYTGamesClient = Depends(get_client)) -> Optional[WordleBotAnalysis]:
+    """
+    **Get your WordleBot analysis**
+
+    Returns your luck and skill for today's Wordle, overall and by round, or
+    null if you haven't opened WordleBot today. Needs cookies. Only today's
+    game is available.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/int/run/cubby/public-api/v1/responses/wordlebot/reader
+    ```
+    """
+    return client.wordlebot()
+
+
+@router.get(
+    "/wordlebot/{date}/summary",
+    response_model=WordleBotSummary,
+    summary="Get WordleBot's summary of a day's Wordle",
+    tags=["WordleBot"])
+def get_wordlebot_summary(
+    client: NYTGamesClient = Depends(get_client),
+    date: str = Path(..., examples=["2026-10-04"]),
+) -> WordleBotSummary:
+    """
+    **Get a WordleBot summary**
+
+    Returns how everyone did on a day's Wordle: average guesses, skill and
+    luck by mode, guess distributions, skill percentiles and the bot's solve
+    paths (which include the solution). Available for every day.
+
+    **Backend API**
+    ```
+    GET https://static01.nyt.com/newsgraphics/2022/wordlebot/{solution}-{date}/summary.json
+    ```
+    """
+    return client.wordlebot_summary(date)
 
 
 app = create_app()

@@ -33,12 +33,16 @@ from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
 from nytgames.models import SpellingBeePuzzle
 from nytgames.models import StrandsPuzzle
+from nytgames.models import WordleBotAnalysis
+from nytgames.models import WordleBotSummary
 from nytgames.models import WordlePuzzle
 from nytgames.models import WordlePuzzlesList
 
 logger = logging.getLogger(__name__)
 
 NYT_BASE_URL = "https://www.nytimes.com"
+WORDLEBOT_URL = "https://www.nytimes.com/svc/int/run/cubby/public-api/v1/responses/wordlebot/reader"
+WORDLEBOT_SUMMARY_URL = "https://static01.nyt.com/newsgraphics/2022/wordlebot/{solution}-{date}/summary.json"
 # NYT's games archive returns at most 31 days per request.
 ARCHIVE_DAYS = 31
 USER_AGENT = f"nytimes-games/{__version__} (+https://github.com/lukwam/nytimes-games)"
@@ -147,15 +151,25 @@ class NYTGamesClient:
         self.base_url = base_url.rstrip("/")
 
     def _get(self, path: str, params: dict | None = None, json_response: bool = True):
-        """Return the response from a GET request to NYT."""
+        """Return the response from a GET request to NYT.
+
+        `path` is relative to `base_url`, or a full URL. Cookies are only sent
+        to `base_url` and www.nytimes.com, never to other hosts such as NYT's
+        static file server.
+        """
         headers = {"User-Agent": self.user_agent}
         if json_response:
             headers["Accept"] = "application/json"
         if params:
             params = {k: v for k, v in params.items() if v is not None}
+        if path.startswith("https://"):
+            url = path
+            send_cookies = path.startswith((self.base_url + "/", NYT_BASE_URL + "/"))
+        else:
+            url, send_cookies = f"{self.base_url}{path}", True
         response = self.session.get(
-            f"{self.base_url}{path}",
-            cookies=self.cookies,
+            url,
+            cookies=self.cookies if send_cookies else None,
             headers=headers,
             params=params,
             timeout=self.timeout,
@@ -379,6 +393,32 @@ class NYTGamesClient:
         return StrandsPuzzle(**self._get(f"/svc/strands/v2/{date}.json"))
 
     # Wordle
+    def wordlebot(self) -> WordleBotAnalysis | None:
+        """Return your WordleBot analysis of today's Wordle, or None.
+
+        Needs cookies. NYT only keeps today's game, and only after you've
+        opened WordleBot; earlier games aren't available. When there are
+        several (one each time you open WordleBot), the latest is returned.
+        """
+        entries = self._get(WORDLEBOT_URL)
+        analyses = [
+            WordleBotAnalysis(**entry["content"], created_at=entry.get("created_at"),
+                              response_id=entry.get("response_id"))
+            for entry in entries
+            if isinstance(entry.get("content"), dict) and entry["content"].get("guesses")
+        ]
+        return max(analyses, key=lambda a: a.created_at or "", default=None)
+
+    def wordlebot_summary(self, date: str, solution: str | None = None) -> WordleBotSummary:
+        """Return WordleBot's summary of how everyone did on a day's Wordle.
+
+        Available for every day since the first Wordle (2021-06-19). The files
+        are named by solution, so this also fetches the day's Wordle unless
+        `solution` is given. Doesn't need cookies.
+        """
+        solution = solution or self.wordle(date).solution
+        return WordleBotSummary(**self._get(WORDLEBOT_SUMMARY_URL.format(solution=solution, date=date)))
+
     def wordle(self, date: str) -> WordlePuzzle:
         """Return the Wordle puzzle for a date (YYYY-MM-DD)."""
         return WordlePuzzle(**self._get(f"/svc/wordle/v2/{date}.json"))

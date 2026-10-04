@@ -4,6 +4,19 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.8.2
+
+### Added
+
+- WordleBot: `wordlebot()` returns your analysis of today's Wordle (luck and
+  skill, overall and by round; needs cookies, today only, after you've opened
+  WordleBot), and `wordlebot_summary(date)` returns how everyone did on any
+  day since 2021-06-19, including the bot's solve paths.
+- `nytg wordlebot [DATE]` compares your luck and skill with everyone's and
+  shows where your skill falls among players; `--answers` shows the bot's
+  paths. API routes `/wordlebot` and `/wordlebot/{date}/summary`.
+- Cookies are only sent to NYT's main site, never to its static file server.
+
 ## 0.8.1
 
 ### Fixed
