@@ -52,6 +52,12 @@ class ConnectionsPuzzle(NYTModel):
     illustrator: str | None = None
     categories: List[ConnectionsPuzzleCategory]
 
+    def board(self) -> List[List[ConnectionsPuzzleCard]]:
+        """Return the cards as the 4x4 starting board, in position order."""
+        cards = sorted((card for category in self.categories for card in category.cards),
+                       key=lambda card: card.position)
+        return [cards[i:i + 4] for i in range(0, len(cards), 4)]
+
 
 class CrosswordGameData(NYTModel):
     """Crossword Game Data (the user's saved progress)."""
@@ -140,6 +146,17 @@ class CrosswordPuzzle(NYTModel):
     relatedContent: dict | None = None
     subcategory: int | None = None
     title: str | None = None
+
+    def squares(self) -> list:
+        """Return every square (a ``nytgames.structure.Square``), in reading order."""
+        from nytgames.structure import squares
+        return squares(self)
+
+    def entries(self) -> list:
+        """Return every entry (a ``nytgames.structure.Entry``) with its answer,
+        squares, crossings and referenced clues, in clue list order."""
+        from nytgames.structure import entries
+        return entries(self)
 
 
 class CrosswordOraclePuzzle(NYTModel):
@@ -518,6 +535,12 @@ class StrandsPuzzle(NYTModel):
     themeCoords: Dict[str, List[List[int]]]
     spangramCoords: List[List[int]] | None = None
     themeWords: List[str] | None = []
+
+    def words(self) -> list:
+        """Return the theme words and spangram (``nytgames.structure.StrandsWord``)
+        with their paths through the board."""
+        from nytgames.structure import strands_words
+        return strands_words(self)
 
 
 class WordlePuzzle(NYTModel):

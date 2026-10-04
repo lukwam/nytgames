@@ -11,6 +11,10 @@ versions may include breaking changes.
 - A live check of every game against NYT runs every morning, with a README
   badge showing the latest result. Failures open an issue automatically.
 - A coverage badge.
+- Puzzle structure helpers: `CrosswordPuzzle.entries()` (each entry's clue,
+  full answer, squares, coordinates, crossings and referenced clues) and
+  `.squares()`, `StrandsPuzzle.words()` (words with their paths) and
+  `ConnectionsPuzzle.board()`. Special puzzles are kept as they are.
 
 ### Fixed
 

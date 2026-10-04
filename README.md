@@ -84,6 +84,32 @@ midis = client.archive("crossword_midi", "2026-09-01", "2026-09-30")
 client.crossword_game([p.id for p in midis], "midi")   # up to 30 IDs per call
 ```
 
+### Puzzle structure
+
+The models include helpers for working with a puzzle's structure, for
+crossword research, trainers or solvers:
+
+```python
+puzzle = client.crossword("daily", "2025-06-12")
+
+for entry in puzzle.entries():
+    entry.id            # "50-Across"
+    entry.clue          # "Major basketball feat … or a feature shared by 3-, 6- and 9-Down"
+    entry.answer        # "QUADRUPLEDOUBLE", with rebus squares' full answers
+    entry.coordinates   # ((11, 0), (11, 1), …): (row, col) of each square
+    entry.crossings     # ("50-Down", "51-Down", …)
+    entry.references    # ("9-Down", "3-Down", "6-Down")
+    entry.rebus         # True if the answer is longer than its squares
+
+puzzle.squares()        # every square: answer, label, rebus, circled, shaded
+
+client.strands(date).words()          # theme words and spangram with their paths
+client.connections(date).board()      # the 4x4 starting board
+```
+
+Special puzzles are kept as they are: text square labels, extra clue lists
+such as "Around" (entry IDs like `Around-1`), and entries that turn corners.
+
 ### Crossword files
 
 Export crosswords to the standard formats other crossword apps use, with your
