@@ -264,3 +264,31 @@ def test_crossword_puzzles_null_results_are_empty(session):
     """NYT returns null results for empty or too long ranges."""
     session.get.return_value.json.return_value = {"status": "OK", "results": None}
     assert NYTGamesClient(session=session).crossword_puzzles("daily", date_start="2030-01-01").results == []
+
+
+def test_archive_splits_windows_that_hit_the_limit(session):
+    """A window with 31 puzzles may be cut short, so it's split and fetched again."""
+    def day(n):
+        return f"2022-12-{n:02d}"
+
+    def response(path):
+        start, end = path.rsplit("/", 2)[-2:]
+        first, last = int(start[-2:]), int(end[-2:])
+        puzzles = [{"id": 100 + n, "print_date": day(n)} for n in range(first, last + 1)]
+        if first <= 31 <= last:
+            puzzles.append({"id": 999, "print_date": day(31)})  # a second puzzle on the 31st
+        return puzzles[-31:]  # NYT returns at most 31, dropping the earliest
+
+    session.get.side_effect = lambda url, **kwargs: mock.Mock(
+        status_code=200, json=mock.Mock(return_value=response(url)), raise_for_status=mock.Mock())
+    puzzles = NYTGamesClient(session=session).archive("crossword_daily", "2022-12-01", "2022-12-31")
+    assert len(puzzles) == 32
+    assert puzzles[0].print_date == "2022-12-01"
+    assert [p.id for p in puzzles if p.print_date == "2022-12-31"] == [131, 999]
+
+
+def test_crossword_by_id(session):
+    session.get.return_value.json.return_value = {
+        "id": 20759, "body": [], "constructors": [], "copyright": "", "lastUpdated": "", "publicationDate": ""}
+    assert NYTGamesClient(session=session).crossword_by_id(20759).id == 20759
+    assert session.get.call_args.args[0] == "https://www.nytimes.com/svc/crosswords/v6/puzzle/20759.json"
