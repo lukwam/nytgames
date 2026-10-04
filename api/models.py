@@ -7,23 +7,28 @@ from pydantic import ConfigDict
 from pydantic import Field
 
 
-class ConnectionsPuzzleCard(BaseModel):
+class NYTModel(BaseModel):
+    """Base model for NYT responses.
+
+    Extra fields are allowed and passed through so that new fields added by
+    NYT do not break validation.
+    """
+    model_config = ConfigDict(extra="allow")
+
+
+class ConnectionsPuzzleCard(NYTModel):
     """Connections Puzzle Card."""
     content: str
     position: int
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class ConnectionsPuzzleCategory(BaseModel):
+class ConnectionsPuzzleCategory(NYTModel):
     """Connections Puzzle Category."""
     title: str
     cards: List[ConnectionsPuzzleCard]
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class ConnectionsPuzzle(BaseModel):
+class ConnectionsPuzzle(NYTModel):
     """Connections Puzzle."""
     id: int
     status: str
@@ -31,46 +36,46 @@ class ConnectionsPuzzle(BaseModel):
     editor: str
     categories: List[ConnectionsPuzzleCategory]
 
-    model_config = ConfigDict(extra="forbid")
+
+class CrosswordGameData(NYTModel):
+    """Crossword Game Data (the user's saved progress)."""
+    cells: dict
+    completionFraction: float | None = None
+    firstSolve: int | None = None
+    firstSolveDate: str | None = None
+    playTimeSeconds: int | None = None
+    star: str | None = None
 
 
-class CrosswordGameResult(BaseModel):
-    """Crossword Game."""
-    id: str
-    board: List[str]
-    completed: bool
-    eligible: bool
-    epoch: int
-    firstOpened: int
-    firstSolved: int
-    isPuzzleInfoRead: bool
-    lastUpdateTime: int
-    solved: bool
-    timeElapsed: int
-
-    model_config = ConfigDict(extra="forbid")
+class CrosswordGameState(NYTModel):
+    """Crossword Game State."""
+    game: str
+    game_data: CrosswordGameData
+    print_date: str
+    puzzle_id: str
+    timestamp: int
+    user_id: int
 
 
-class CrosswordGame(BaseModel):
-    """Crossword Game."""
-    status: str
-    results: CrosswordGameResult
+class CrosswordGame(NYTModel):
+    """Crossword Game States."""
+    player: dict | None = None
+    states: List[CrosswordGameState]
+    user_id: int
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class CrosswordMiniCell(BaseModel):
-    """Crossword Mini Cell."""
+class CrosswordPuzzleCell(NYTModel):
+    """Crossword Puzzle Cell."""
     answer: str | None = None
     clues: List[int] | None = None
     label: int | None = None
+    # Rebus squares list other accepted answers, e.g. {"valid": ["L"]}.
+    moreAnswers: Dict[str, List[str]] | None = None
     type: int | None = None
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class CrosswordMiniClue(BaseModel):
-    """Crossword Mini Clue."""
+class CrosswordPuzzleClue(NYTModel):
+    """Crossword Puzzle Clue."""
     cells: List[int]
     direction: str
     label: str
@@ -78,42 +83,57 @@ class CrosswordMiniClue(BaseModel):
     relatives: List[int] | None = None
     text: List[Dict[str, str]]
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class CrosswordMiniBodyClueList(BaseModel):
-    """Crossword Mini Body Clue List."""
+class CrosswordPuzzleClueList(NYTModel):
+    """Crossword Puzzle Clue List."""
     clues: List[int]
     name: str
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class CrosswordMiniBody(BaseModel):
-    """Crossword Mini Body."""
+class CrosswordPuzzleBody(NYTModel):
+    """Crossword Puzzle Body."""
     board: str
-    cells: List[CrosswordMiniCell]
-    clues: List[CrosswordMiniClue]
-    clueLists: List[CrosswordMiniBodyClueList]
+    cells: List[CrosswordPuzzleCell]
+    clues: List[CrosswordPuzzleClue]
+    clueLists: List[CrosswordPuzzleClueList]
     dimensions: Dict[str, int]
     SVG: dict
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class CrosswordMini(BaseModel):
-    """Crossword Mini."""
+class CrosswordPuzzle(NYTModel):
+    """Crossword Puzzle (v6 format used by Daily, Mini, Midi and Bonus)."""
     id: int
-    body: List[CrosswordMiniBody]
+    body: List[CrosswordPuzzleBody]
     constructors: List[str]
     copyright: str
-    editor: str
+    editor: str | None = None
     freePuzzle: bool | None = None
     lastUpdated: str
+    notes: list | None = None
     publicationDate: str
-    subcategory: int
+    relatedContent: dict | None = None
+    subcategory: int | None = None
+    title: str | None = None
 
-    model_config = ConfigDict(extra="forbid")
+
+class CrosswordOraclePuzzle(NYTModel):
+    """Crossword Oracle Puzzle."""
+    print_date: str
+    published: str
+    puzzle_id: int
+    time_delta: int
+
+
+class CrosswordOracleResults(NYTModel):
+    """Crossword Oracle Results."""
+    current: CrosswordOraclePuzzle
+    next: CrosswordOraclePuzzle
+
+
+class CrosswordOracle(NYTModel):
+    """Crossword Oracle (current and next puzzle)."""
+    results: CrosswordOracleResults
+    status: str
 
 
 # pylint: disable=invalid-name
@@ -121,10 +141,11 @@ class CrosswordPublishType(str, Enum):
     """Crossword Publish Type."""
     daily = "daily"
     bonus = "bonus"
+    midi = "midi"
     mini = "mini"
 
 
-class CrosswordPuzzleListItem(BaseModel):
+class CrosswordPuzzleListItem(NYTModel):
     """Crossword Puzzle."""
     author: str
     editor: str
@@ -138,91 +159,14 @@ class CrosswordPuzzleListItem(BaseModel):
     title: str
     version: int
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class CrosswordPuzzlesList(BaseModel):
+class CrosswordPuzzlesList(NYTModel):
     """Crossword Puzzle List."""
     results: List[CrosswordPuzzleListItem]
     status: str
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class CrosswordPuzzleRelatedContent(BaseModel):
-    """Crossword Puzzle Related Content."""
-    text: str
-    url: str
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class CrosswordPuzzleDataClue(BaseModel):
-    """Crossword Puzzle Clue."""
-    clueNum: int
-    clueStart: int
-    clueEnd: int
-    formatted: str | None = None
-    value: str
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class CrosswordPuzzleData(BaseModel):
-    """Crossword Puzzle Data."""
-    answers: List[str | None]
-    clues: Dict[str, List[CrosswordPuzzleDataClue]]
-    clueListOrder: List[str]
-    layout: List[int]
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class CrosswordPuzzleMeta(BaseModel):
-    """Crossword Puzzle Meta."""
-    author: str
-    copyright: str
-    editor: str
-    formatType: str
-    height: int
-    layoutExtra: list
-    links: list
-    notes: list
-    printDate: str
-    printDotw: int
-    publishType: str
-    title: str
-    width: int
-
-    relatedContent: CrosswordPuzzleRelatedContent
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class CrosswordPuzzleResult(BaseModel):
-    """Crossword Puzzle Result."""
-    puzzle_id: int
-    authors: List[str]
-    enhanced_tier_date: None
-    print_date: str
-    promo_id: None
-    puzzle_data: CrosswordPuzzleData
-    puzzle_meta: CrosswordPuzzleMeta
-    version: int
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class CrosswordPuzzle(BaseModel):
-    """Crossword Puzzle."""
-    entitlement: str
-    results: List[CrosswordPuzzleResult]
-    status: str
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class SpellingBeeGameDay(BaseModel):
+class SpellingBeeGameDay(NYTModel):
     """Spelling Bee Game Day."""
     id: int
     answers: List[str]
@@ -236,38 +180,30 @@ class SpellingBeeGameDay(BaseModel):
     printDate: str
     validLetters: List[str]
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeeGamePastPuzzles(BaseModel):
+class SpellingBeeGamePastPuzzles(NYTModel):
     """Spelling Bee Game Past Puzzles."""
     today: SpellingBeeGameDay
     yesterday: SpellingBeeGameDay
     lastWeek: list
     thisWeek: list
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeeGameData(BaseModel):
+class SpellingBeeGameData(NYTModel):
     """Spelling Bee Game Data."""
     today: SpellingBeeGameDay
     yesterday: SpellingBeeGameDay
     pastPuzzles: SpellingBeeGamePastPuzzles
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeeLongestWord(BaseModel):
+class SpellingBeeLongestWord(NYTModel):
     """Spelling Bee Longest Word"""
     word: str
     center_letter: str
     print_date: str
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeeRanks(BaseModel):
+class SpellingBeeRanks(NYTModel):
     """Spelling Bee Ranks."""
     Amazing: int
     Beginner: int
@@ -280,10 +216,8 @@ class SpellingBeeRanks(BaseModel):
     Queen_Bee: int = Field(..., alias="Queen Bee")
     Solid: int
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeeStatsSpellingBee(BaseModel):
+class SpellingBeeStatsSpellingBee(NYTModel):
     """Spelling Bee Stats - Spelling Bee."""
     puzzles_started: int
     total_words: int
@@ -291,10 +225,8 @@ class SpellingBeeStatsSpellingBee(BaseModel):
     longest_word: SpellingBeeLongestWord
     ranks: SpellingBeeRanks
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeeStatsWordleLegacyStatsGuesses(BaseModel):
+class SpellingBeeStatsWordleLegacyStatsGuesses(NYTModel):
     """Spelling Bee Stats - Wordle Legacy Stats Guesses."""
     one: int = Field(..., alias="1")
     two: int = Field(..., alias="2")
@@ -304,10 +236,8 @@ class SpellingBeeStatsWordleLegacyStatsGuesses(BaseModel):
     six: int = Field(..., alias="6")
     fail: int
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeeStatsWordleLegacyStats(BaseModel):
+class SpellingBeeStatsWordleLegacyStats(NYTModel):
     """Spelling Bee Stats - Wordle Legacy Stats."""
     autoOptInTimestamp: int
     currentStreak: int
@@ -320,43 +250,33 @@ class SpellingBeeStatsWordleLegacyStats(BaseModel):
     maxStreak: int
     timestamp: int
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeeStatsWordle(BaseModel):
+class SpellingBeeStatsWordle(NYTModel):
     """Spelling Bee Stats - Wordle"""
     legacyStats: SpellingBeeStatsWordleLegacyStats
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeePlayerStats(BaseModel):
+class SpellingBeePlayerStats(NYTModel):
     """Spelling Bee Stats."""
     spelling_bee: SpellingBeeStatsSpellingBee
     wordle: SpellingBeeStatsWordle
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeePlayer(BaseModel):
+class SpellingBeePlayer(NYTModel):
     """Spelling Bee Player."""
     user_id: int
     last_updated: int
     stats: SpellingBeePlayerStats
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeeLatestStateGameData(BaseModel):
+class SpellingBeeLatestStateGameData(NYTModel):
     """Spelling Bee Latest State Game Data."""
     answers: List[str]
     isRevealed: bool
     rank: str
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeeLatestState(BaseModel):
+class SpellingBeeLatestState(NYTModel):
     """Spelling Bee Latest State."""
     game_data: SpellingBeeLatestStateGameData
     game: str
@@ -367,48 +287,40 @@ class SpellingBeeLatestState(BaseModel):
     user_id: int
     version: str
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class SpellingBeeLatest(BaseModel):
+class SpellingBeeLatest(NYTModel):
     """Spelling Bee Latest."""
     user_id: int
     states: List[SpellingBeeLatestState]
     player: SpellingBeePlayer
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class StrandsPuzzle(BaseModel):
+class StrandsPuzzle(NYTModel):
     """Strands Puzzle."""
     id: int
     clue: str
+    constructors: str | None = None
     editor: str
     printDate: str
     solutions: List[str]
     spangram: str
     startingBoard: List[str]
     themeCoords: Dict[str, List[List[int]]]
+    spangramCoords: List[List[int]] | None = None
     themeWords: List[str] | None = []
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class WordlePuzzle(BaseModel):
+class WordlePuzzle(NYTModel):
     """Wordle Puzzle."""
     id: int
-    days_since_launch: int
-    editor: str
+    days_since_launch: int | None = None
+    editor: str | None = None
     print_date: str
     solution: str
 
-    model_config = ConfigDict(extra="forbid")
 
-
-class WordlePuzzlesList(BaseModel):
+class WordlePuzzlesList(NYTModel):
     """Wordle Puzzle List."""
     player: dict
     states: List[dict]
     user_id: int
-
-    model_config = ConfigDict(extra="forbid")
