@@ -17,6 +17,7 @@ from nytgames import NYTGamesAuthenticationError
 from nytgames import NYTGamesClient
 from nytgames import NYTGamesHTTPError
 from nytgames import NYTGamesNotFoundError
+from nytgames import formats
 from nytgames.cli.dates import date_range
 from nytgames.cli.output import FormatOption
 from nytgames.cli.output import emit
@@ -58,14 +59,20 @@ def archive(
     out: Annotated[Path, typer.Option("--out", "-o", help="Directory to save into.", file_okay=False)] = Path("nyt-archive"),
     delay: Annotated[float, typer.Option(help="Seconds to wait between requests.", min=0)] = 0.25,
     overwrite: Annotated[bool, typer.Option(help="Download dates that are already saved.")] = False,
+    file_format: Annotated[
+        str, typer.Option("--as", help="File format: json, or for crosswords puz, ipuz or xml.")
+    ] = "json",
     fmt: FormatOption = None,
 ) -> None:
-    """Save each date's puzzle as JSON in OUT/GAME/YYYY-MM-DD.json.
+    """Save each date's puzzle in OUT/GAME/YYYY-MM-DD.json (or .puz, .ipuz, .xml).
 
     Dates already saved are skipped, so an interrupted archive can be resumed
     by running the same command again. Dates without a puzzle are reported as
-    missing.
+    missing, and crosswords that can't be saved in the --as format (some
+    special puzzles) as unsupported.
     """
+    if file_format != "json" and (file_format not in formats.FORMATS or not game.value.startswith("crossword-")):
+        raise typer.BadParameter("Use json, or puz, ipuz or xml for crosswords.", param_hint="'--as'")
     first = date_arg(start, game.value)
     last = date_arg(end, game.value)
     if first > last:
@@ -75,12 +82,13 @@ def archive(
     fetch = fetcher(state.client(), game)
     days = list(date_range(first, last))
     result: dict[str, Optional[object]] = {"game": game.value, "directory": str(directory),
-                                           "saved": 0, "skipped": 0, "missing": [], "errors": []}
+                                           "format": file_format, "saved": 0, "skipped": 0,
+                                           "missing": [], "unsupported": [], "errors": []}
     columns = (TextColumn("{task.description}"), BarColumn(), MofNCompleteColumn(), TimeRemainingColumn())
     with Progress(*columns, console=err_console, transient=True) as progress:
         task = progress.add_task(f"Archiving {game.value}", total=len(days))
         for day in days:
-            path = directory / f"{day}.json"
+            path = directory / f"{day}.{file_format}"
             if path.exists() and not overwrite:
                 result["skipped"] += 1
                 progress.advance(task)
@@ -94,11 +102,20 @@ def archive(
             except NYTGamesHTTPError as err:
                 result["errors"].append({"date": day.isoformat(), "error": str(err)})
             else:
-                data = puzzle.model_dump(mode="json", by_alias=True)
-                tmp = path.with_suffix(".json.tmp")
-                tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
-                tmp.replace(path)
-                result["saved"] += 1
+                if file_format == "json":
+                    content = (json.dumps(puzzle.model_dump(mode="json", by_alias=True),
+                                          ensure_ascii=False, indent=2) + "\n").encode()
+                else:
+                    try:
+                        content = formats.export(puzzle, file_format)
+                    except formats.NYTGamesExportError as err:
+                        result["unsupported"].append({"date": day.isoformat(), "reasons": err.reasons})
+                        content = None
+                if content is not None:
+                    tmp = path.with_name(path.name + ".tmp")
+                    tmp.write_bytes(content)
+                    tmp.replace(path)
+                    result["saved"] += 1
             progress.advance(task)
             if delay:
                 time.sleep(delay)
@@ -109,6 +126,7 @@ def archive(
             "Already saved": data["skipped"],
             "No puzzle": ", ".join(data["missing"]) if len(data["missing"]) <= 5
             else f"{len(data['missing'])} dates",
+            "Can't save as " + data["format"]: len(data["unsupported"]),
             "Errors": len(data["errors"]),
             "Directory": data["directory"],
         }, title=f"[bold]Archived {data['game']}[/bold]")

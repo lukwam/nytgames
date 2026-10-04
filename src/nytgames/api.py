@@ -15,6 +15,7 @@ dependency::
     app = create_app()
     app.dependency_overrides[get_client] = lambda: NYTGamesClient(cookies=...)
 """
+import enum
 from typing import Any
 from typing import Optional
 
@@ -27,6 +28,7 @@ try:
     from fastapi import Query
     from fastapi import Request
     from fastapi.responses import JSONResponse
+    from fastapi.responses import Response
 except ImportError as err:  # pragma: no cover
     raise ImportError(
         'nytgames.api requires FastAPI. Install it with: pip install "nytimes-games[api]"'
@@ -37,6 +39,7 @@ import requests
 from nytgames import __version__
 from nytgames import NYTGamesClient
 from nytgames import NYTGamesParseError
+from nytgames import formats
 from nytgames import spelling_bee_hints
 from nytgames.models import ArchiveGame
 from nytgames.models import ArchivePuzzle
@@ -226,6 +229,51 @@ def get_crossword_oracle(
     ```
     """
     return client.crossword_oracle(publish_type)
+
+
+class ExportFormat(str, enum.Enum):
+    """Crossword file formats."""
+    ipuz = "ipuz"
+    puz = "puz"
+    xml = "xml"
+
+
+@router.get(
+    "/crosswords/{publish_type}/{date}/download",
+    summary="Download a crossword as a .puz, .ipuz or .xml file",
+    tags=["Crosswords"],
+    response_class=Response,
+    responses={200: {"content": {media: {} for media in formats.MEDIA_TYPES.values()}},
+               422: {"description": "The puzzle can't be saved in this format"}},
+)
+def download_crossword(
+    publish_type: CrosswordPublishType,
+    client: NYTGamesClient = Depends(get_client),
+    date: str = Path(..., examples=["2025-06-12"]),
+    file_format: ExportFormat = Query(ExportFormat.puz, alias="format"),
+    progress: bool = Query(False, description="Include the user's saved progress (needs cookies)."),
+) -> Response:
+    """
+    **Download a crossword file**
+
+    Returns the crossword as Across Lite `.puz`, `.ipuz` or Crossword Compiler
+    `.xml`, optionally with the user's saved progress. Some special puzzles
+    can't be represented in these formats and return 422 with the reasons.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/crosswords/v6/puzzle/{publish_type}/{date}.json
+    ```
+    """
+    puzzle = client.crossword(publish_type, date)
+    game = client.crossword_game(puzzle.id, publish_type) if progress else None
+    try:
+        content = formats.export(puzzle, file_format.value, game)
+    except formats.NYTGamesExportError as err:
+        raise HTTPException(status_code=422, detail={"format": err.format, "reasons": err.reasons}) from None
+    filename = f"nyt-{publish_type.value}-{puzzle.publicationDate}.{file_format.value}"
+    return Response(content, media_type=formats.MEDIA_TYPES[file_format.value],
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 # Crossword - Bonus

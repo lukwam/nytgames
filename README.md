@@ -82,6 +82,35 @@ midis = client.archive("crossword_midi", "2026-09-01", "2026-09-30")
 client.crossword_game([p.id for p in midis], "midi")   # up to 30 IDs per call
 ```
 
+### Crossword files
+
+Export crosswords to the standard formats other crossword apps use, with your
+saved progress if you like:
+
+```python
+from nytgames import formats
+
+puzzle = client.crossword("daily", "2025-06-12")
+game = client.crossword_game(puzzle.id, "daily")      # optional: your progress
+
+open("daily.puz", "wb").write(formats.to_puz(puzzle, game))     # Across Lite
+formats.to_ipuz(puzzle, game)                                    # ipuz, as a dict
+open("daily.xml", "w").write(formats.to_xml(puzzle, game))      # Crossword Compiler XML
+formats.export(puzzle, "ipuz")                                   # any format, as bytes
+```
+
+| Format | Notes |
+|---|---|
+| `.puz` | Across Lite, the most widely supported. Rebus squares, circles, your fill, revealed squares and the timer. Shaded squares are shown as circles, and text must fit Latin-1 (typographic quotes and dashes are converted) |
+| `.ipuz` | The open [ipuz](http://ipuz.org) JSON format. Rebus, circles, shading and your fill |
+| `.xml` | [Crossword Compiler](https://crossword.info/xml/rectangular-puzzle.xsd) rectangular-puzzle XML. Rebus, circles, shading, your fill and revealed or penciled squares |
+
+A few special puzzles use gimmicks these formats can't represent, such as
+squares labeled with text or clues that wind around the grid. Exporting them
+raises `NYTGamesExportError`, whose `reasons` say why; `export_problems(puzzle,
+fmt)` returns the reasons without exporting. Exported files are for personal
+use: the puzzles are copyrighted by The New York Times.
+
 Spelling Bee extras:
 
 ```python
@@ -151,6 +180,8 @@ nytg bee --hints                 # Spelling Bee Forum style hints
 nytg letter-boxed
 nytg crossword mini              # the grid and clues
 nytg crossword daily 1993-11-21 --answers
+nytg crossword mini --save mini.puz     # or .ipuz, or .xml (Crossword Compiler)
+nytg crossword daily yesterday --save daily.ipuz --progress   # with your progress
 ```
 
 Answers are hidden unless you pass `--answers`, in every output format.
@@ -185,7 +216,9 @@ nytg archive connections --from first --out puzzles/
 ```
 
 saves each date as `puzzles/connections/YYYY-MM-DD.json`. Run it again to
-resume: saved dates are skipped. Games: `wordle`, `connections`, `strands`,
+resume: saved dates are skipped. Crosswords can be archived as crossword files
+with `--as puz`, `--as ipuz` or `--as xml`; puzzles that can't be saved in that
+format are listed as unsupported. Games: `wordle`, `connections`, `strands`,
 `spelling-bee`, `letter-boxed`, `crossword-daily`, `crossword-mini` and
 `crossword-midi`.
 
@@ -317,6 +350,7 @@ running your own instance in a container.
 | `GET /crosswords/midi/today` | `svc/crosswords/v6/puzzle/midi.json` |
 | `GET /crosswords/midi/{date}` | `svc/crosswords/v6/puzzle/midi/{date}.json` |
 | `GET /crosswords/bonus/{date}` | `svc/crosswords/v6/puzzle/bonus/{date}.json` |
+| `GET /crosswords/{publish_type}/{date}/download?format=puz` | A `.puz`, `.ipuz` or `.xml` file (`&progress=true` adds your progress) |
 | `GET /crosswords/puzzles` | `svc/crosswords/v3/puzzles.json` |
 | `GET /crosswords/oracle/{publish_type}` | `svc/crosswords/v2/oracle/{publish_type}.json` |
 | `GET /crosswords/game/{game_id}?publish_type=daily` | `svc/games/state/crossword_{publish_type}/latests` |

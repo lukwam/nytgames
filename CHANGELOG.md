@@ -4,6 +4,21 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.7.0
+
+### Added
+
+- `nytgames.formats`: export crosswords to Across Lite `.puz`, `.ipuz` and
+  Crossword Compiler rectangular-puzzle `.xml`, with the user's saved
+  progress (fill, revealed and penciled squares, and the .puz timer).
+  Rebus squares, circles and shading are kept where the format allows.
+  `export()`, `to_puz()`, `to_ipuz()`, `to_xml()` and `export_problems()`.
+- `NYTGamesExportError` for puzzles whose gimmicks a format can't represent,
+  with the reasons.
+- `nytg crossword ... --save FILE [--progress]` and
+  `nytg archive crossword-* --as puz|ipuz|xml`.
+- API route `/crosswords/{publish_type}/{date}/download?format=puz`.
+
 ## 0.6.1
 
 ### Fixed
