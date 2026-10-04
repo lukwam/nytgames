@@ -86,3 +86,21 @@ def test_http_errors_are_raised(session):
     session.get.return_value.raise_for_status.side_effect = requests.HTTPError("404")
     with pytest.raises(requests.HTTPError):
         NYTGamesClient(session=session).wordle("1900-01-01")
+
+
+def test_letter_boxed(session):
+    """Letter Boxed puzzles are fetched from the v1 endpoint by date."""
+    session.get.return_value.json.return_value = {
+        "id": 2860,
+        "dictionary": ["LUMPY", "WHEREWITHAL"],
+        "editor": "Sam Ezersky",
+        "is_free": True,
+        "ourSolution": ["WHEREWITHAL", "LUMPY"],
+        "par": 4,
+        "printDate": "2026-10-03",
+        "sides": ["LHY", "MIE", "RUT", "WAP"],
+    }
+    puzzle = NYTGamesClient(session=session).letter_boxed("2026-10-03")
+    assert puzzle.sides == ["LHY", "MIE", "RUT", "WAP"]
+    assert puzzle.model_dump()["is_free"] is True
+    assert session.get.call_args.args[0] == "https://www.nytimes.com/svc/letter-boxed/v1/2026-10-03.json"

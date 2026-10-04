@@ -15,6 +15,7 @@ from nytgames.models import CrosswordOracle
 from nytgames.models import CrosswordPublishType
 from nytgames.models import CrosswordPuzzle
 from nytgames.models import CrosswordPuzzlesList
+from nytgames.models import LetterBoxedPuzzle
 from nytgames.models import SpellingBeeGameData
 from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
@@ -160,6 +161,15 @@ class NYTGamesClient:
         """Return the current and next crossword puzzle (daily, mini or midi)."""
         publish_type = CrosswordPublishType(publish_type).value
         return CrosswordOracle(**self._get(f"/svc/crosswords/v2/oracle/{publish_type}.json"))
+
+    # Letter Boxed
+    def letter_boxed(self, date: str) -> LetterBoxedPuzzle:
+        """Return the Letter Boxed puzzle for a date (YYYY-MM-DD).
+
+        Puzzles are available from 2019 on, and NYT also serves the next day or
+        two ahead of time.
+        """
+        return LetterBoxedPuzzle(**self._get(f"/svc/letter-boxed/v1/{date}.json"))
 
     # Spelling Bee
     def spelling_bee(self) -> SpellingBeeGameData:

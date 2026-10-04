@@ -1,8 +1,8 @@
 # nytgames
 
 Unofficial Python client and API for the New York Times Games APIs (Wordle,
-Connections, Strands, Spelling Bee and the Daily, Mini, Midi and Bonus
-crosswords). Responses are validated with Pydantic models.
+Connections, Strands, Spelling Bee, Letter Boxed and the Daily, Mini, Midi and
+Bonus crosswords). Responses are validated with Pydantic models.
 
 This repo contains:
 
@@ -25,6 +25,7 @@ client = NYTGamesClient(cookies="NYT-S=...")
 
 client.wordle("2025-06-12").solution
 client.connections("2025-06-12").categories
+client.letter_boxed("2026-10-03").sides
 client.crossword()                        # today's daily crossword
 client.crossword("mini", "2025-06-12")    # daily, mini, midi or bonus
 client.crossword_oracle("midi")           # current and next puzzle IDs
@@ -64,6 +65,7 @@ Interactive docs are served at `/docs` and `/redoc`.
 | `GET /crosswords/midi/{date}` | `svc/crosswords/v6/puzzle/midi/{date}.json` |
 | `GET /crosswords/oracle/{publish_type}` | `svc/crosswords/v2/oracle/{publish_type}.json` (current and next puzzle; `daily`, `midi`, `mini`) |
 | `GET /crosswords/game/{game_id}?publish_type=daily` | `svc/games/state/crossword_{publish_type}/latests?puzzle_ids={game_id}` (your saved progress) |
+| `GET /letter-boxed/{date}` | `svc/letter-boxed/v1/{date}.json` |
 | `GET /spelling-bee` | Scraped from `puzzles/spelling-bee` |
 | `GET /spelling-bee/latest` | `svc/games/state/spelling_bee/latests` (up to 30 `puzzle_ids`) |
 | `GET /spelling-bee/{date}` | Scraped from `puzzles/spelling-bee` (about the last two weeks) |

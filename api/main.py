@@ -24,6 +24,7 @@ from nytgames.models import CrosswordOracle
 from nytgames.models import CrosswordPublishType
 from nytgames.models import CrosswordPuzzle
 from nytgames.models import CrosswordPuzzlesList
+from nytgames.models import LetterBoxedPuzzle
 from nytgames.models import SpellingBeeGameData
 from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
@@ -53,6 +54,7 @@ app = FastAPI(
         {"name": "Crosswords - Daily", "description": "Crossword Daily Puzzles operations"},
         {"name": "Crosswords - Midi", "description": "Crossword Midi Puzzles operations"},
         {"name": "Crosswords - Mini", "description": "Crossword Mini Puzzles operations"},
+        {"name": "Letter Boxed", "description": "Letter Boxed Puzzles operations"},
         {"name": "Spelling Bee", "description": "Spelling Bee Puzzles operations"},
         {"name": "Strands", "description": "Strands Puzzles operations"},
         {"name": "Wordle", "description": "Wordle Puzzles operations"},
@@ -387,6 +389,29 @@ def list_crossword_puzzles(
         date_start=date_start,
         date_end=date_end,
     )
+
+
+# Letter Boxed
+@app.get(
+    "/letter-boxed/{date}",
+    response_model=LetterBoxedPuzzle,
+    summary="Get the Letter Boxed puzzle for a specific date",
+    tags=["Letter Boxed"])
+def get_letter_boxed_puzzle(
+    client: NYTGamesClient = Depends(get_client),
+    date: str = Path(..., examples=["2026-10-03"]),
+) -> LetterBoxedPuzzle:
+    """
+    **Get a Letter Boxed puzzle**
+
+    Returns the Letter Boxed puzzle for the date provided in the path parameter.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/letter-boxed/v1/{date}.json
+    ```
+    """
+    return client.letter_boxed(date)
 
 
 # Spelling Bee
