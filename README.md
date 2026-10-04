@@ -5,111 +5,211 @@
 [![Test](https://github.com/lukwam/nytimes-games/actions/workflows/test.yml/badge.svg)](https://github.com/lukwam/nytimes-games/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/lukwam/nytimes-games/blob/main/LICENSE)
 
-Unofficial Python client and API for the New York Times Games APIs (Wordle,
+An unofficial Python client for the New York Times Games APIs: Wordle,
 Connections, Strands, Spelling Bee, Letter Boxed and the Daily, Mini, Midi and
-Bonus crosswords). Responses are validated with Pydantic models.
+Bonus crosswords, plus your own stats and game progress.
 
-This repo contains:
+NYT doesn't publish documentation or an API spec for these endpoints. This
+package wraps them in one client with typed, validated
+[Pydantic](https://docs.pydantic.dev/) models, so you can build archives,
+stats dashboards, bots or your own games without reverse engineering NYT's
+APIs first. An optional extra serves everything as a REST API.
 
-- `nytgames/`: the Python library, published on PyPI as `nytimes-games`
-- `api/`: a FastAPI service built on the library, deployed to Cloud Run
-
-Puzzles are available without logging in. Your game progress and stats require
-your NYT session cookie (`NYT-S`) from a logged in nytimes.com browser session.
-
-## Library
+## Installation
 
 ```bash
 pip install nytimes-games
 ```
 
 The package installs as `nytimes-games` and is imported as `nytgames`.
+Python 3.10 or newer is required.
+
+## Quick start
 
 ```python
-from nytgames import NYTGamesClient, spelling_bee_hints
+from nytgames import NYTGamesClient
 
-client = NYTGamesClient(cookies="NYT-S=...")
+client = NYTGamesClient()
 
 client.wordle("2025-06-12").solution
 client.connections("2025-06-12").categories
-client.letter_boxed("2026-10-03").sides
-client.crossword()                        # today's daily crossword
-client.crossword("mini", "2025-06-12")    # daily, mini, midi or bonus
-client.crossword_oracle("midi")           # current and next puzzle IDs
-client.crossword_game(24287)              # your saved progress on a puzzle
-client.crossword_puzzles("daily", date_start="2025-06-01", date_end="2025-06-30")
-client.player_stats().stats.connections.current_streak   # your stats for every game
-
-puzzle = client.spelling_bee_puzzle("2026-10-03")   # any date from 2018-05-06
-spelling_bee_hints(puzzle)                          # Spelling Bee Forum style hints
-client.spelling_bee_puzzles()   # {print_date: puzzle} from the game page, about two weeks
+client.crossword("mini")                  # today's Mini
+client.crossword("daily", "1993-11-21")   # any Daily back to 1993
 ```
 
-`cookies` can be a dict, a `Cookie` header string, or a list of cookie objects
-with `name` and `value` keys, such as a JSON export from the Cookie-Editor
-browser extension.
+Your stats and game progress need your NYT session cookie:
+
+```python
+client = NYTGamesClient(cookies="NYT-S=...")
+
+stats = client.player_stats().stats
+stats.wordle.calculatedStats.currentStreak
+stats.connections.puzzles_won
+stats.crossword_daily.dailyStats["monday"].avgTimeSeconds
+```
+
+## What's available
+
+Puzzles don't need cookies. Everything about you does.
+
+| Game | Method | Available from | Cookies |
+|---|---|---|---|
+| Wordle | `wordle(date)` | 2021-06-19 | No |
+| Connections | `connections(date)` | 2023-06-12 | No |
+| Strands | `strands(date)` | 2024-03-04 | No |
+| Spelling Bee | `spelling_bee_puzzle(date)` | 2018-05-06 | No |
+| Letter Boxed | `letter_boxed(date)` | 2018-12-17 | No |
+| Crossword | `crossword(publish_type, date=None)` | Daily 1993-11-21, Mini 2014-08-21, Midi 2026-02-25, Bonus 1997 | No |
+| Crossword schedule | `crossword_oracle(publish_type)` | Current and next puzzle | No |
+| Crossword list | `crossword_puzzles(publish_type, date_start=..., date_end=...)` | Includes your progress with cookies | Optional |
+| Crossword progress | `crossword_game(puzzle_id, publish_type)` | Your saved game | Yes |
+| Wordle progress | `wordle_latest(puzzle_ids)` | Your saved games | Yes |
+| Spelling Bee progress | `spelling_bee_latest(puzzle_ids)` | Your saved games (up to 30 IDs) | Yes |
+| Stats | `player_stats()` | Every game you've played | Yes |
+
+Dates are `YYYY-MM-DD` strings. `publish_type` is `daily`, `mini`, `midi` or
+`bonus`, and `date=None` returns today's puzzle. NYT usually serves the next
+day's puzzle a day early.
+
+Spelling Bee extras:
+
+```python
+from nytgames import spelling_bee_hints
+
+puzzle = client.spelling_bee_puzzle("2026-10-03")
+spelling_bee_hints(puzzle)      # Spelling Bee Forum style hints: counts, pairs, points
+client.spelling_bee_puzzles()   # every puzzle on the game page (about two weeks)
+```
+
+## Cookies
+
+To get your `NYT-S` cookie, log in at nytimes.com, open your browser's
+developer tools, and find the `NYT-S` cookie for `.nytimes.com` (Application
+tab in Chrome, Storage tab in Firefox). Treat it like a password: it gives
+access to your NYT account.
+
+`cookies` can be:
+
+- a `Cookie` header string: `"NYT-S=...; nyt-a=..."`
+- a dict: `{"NYT-S": "..."}`
+- a list of cookie objects with `name` and `value` keys, such as a JSON export
+  from the Cookie-Editor browser extension
+
+## Errors
 
 HTTP errors from NYT are raised as `NYTGamesHTTPError`, a subclass of
-`requests.HTTPError`: `NYTGamesAuthenticationError` for 401 and 403 (usually a
-missing or expired `NYT-S` cookie) and `NYTGamesNotFoundError` for 404 (e.g. a
-date with no puzzle).
+`requests.HTTPError`:
 
-## API
+| Exception | When |
+|---|---|
+| `NYTGamesAuthenticationError` | 401 or 403, usually a missing or expired `NYT-S` cookie |
+| `NYTGamesNotFoundError` | 404, for example a date with no puzzle |
+| `NYTGamesHTTPError` | any other HTTP error |
+| `NYTGamesParseError` | an NYT page didn't contain the expected game data (a `ValueError`) |
 
-Each endpoint calls NYT with the cookies sent to the API:
+```python
+from nytgames import NYTGamesNotFoundError
 
-```bash
-curl -H "Cookie: NYT-S=..." http://localhost:8080/crosswords/mini/today
+try:
+    client.wordle("1900-01-01")
+except NYTGamesNotFoundError:
+    print("No puzzle that day")
 ```
 
-Interactive docs are served at `/docs` and `/redoc`.
+## Models
+
+Every method returns Pydantic models from `nytgames.models`. Fields NYT adds
+later are kept rather than rejected, so new NYT fields don't break your code.
+Use `.model_dump()` to get plain dicts, and `by_alias=True` to keep NYT's
+original keys, such as `"Queen Bee"` in the Spelling Bee ranks.
+
+## REST API
+
+The optional `api` extra serves everything as a REST API with
+[FastAPI](https://fastapi.tiangolo.com/), including interactive docs at
+`/docs`.
+
+```bash
+pip install "nytimes-games[api]"
+uvicorn nytgames.api:app
+```
+
+To customize it, write your own `main.py`:
+
+```python
+from nytgames.api import create_app
+
+app = create_app(title="My NYT Games API")   # any FastAPI settings
+```
+
+Or mount the routes in an existing FastAPI app:
+
+```python
+from fastapi import FastAPI
+from nytgames.api import add_exception_handlers, router
+
+app = FastAPI()
+app.include_router(router, prefix="/nyt")
+add_exception_handlers(app)   # NYT errors become 404s and 403s instead of 500s
+```
+
+By default each request is made with the cookies sent to the API:
+
+```bash
+curl -H "Cookie: NYT-S=..." http://localhost:8000/player/stats
+```
+
+To use your own cookies for every request instead, override the client:
+
+```python
+from nytgames import NYTGamesClient
+from nytgames.api import get_client
+
+app.dependency_overrides[get_client] = lambda: NYTGamesClient(cookies="NYT-S=...")
+```
+
+Anyone who can reach that API can then see your stats and progress, so keep it
+private.
+
+[`examples/api`](examples/api) has a complete `main.py` and `Dockerfile` for
+running your own instance in a container.
 
 ### Endpoints
 
-| Route | Upstream NYT endpoint |
+| Route | NYT endpoint |
 |---|---|
 | `GET /connections/{date}` | `svc/connections/v2/{date}.json` |
 | `GET /crosswords/daily/today` | `svc/crosswords/v6/puzzle/daily.json` |
 | `GET /crosswords/daily/{date}` | `svc/crosswords/v6/puzzle/daily/{date}.json` |
 | `GET /crosswords/mini/today` | `svc/crosswords/v6/puzzle/mini.json` |
 | `GET /crosswords/mini/{date}` | `svc/crosswords/v6/puzzle/mini/{date}.json` |
-| `GET /crosswords/bonus/{date}` | `svc/crosswords/v6/puzzle/bonus/{date}.json` |
-| `GET /crosswords/puzzles` | `svc/crosswords/v3/puzzles.json` |
 | `GET /crosswords/midi/today` | `svc/crosswords/v6/puzzle/midi.json` |
 | `GET /crosswords/midi/{date}` | `svc/crosswords/v6/puzzle/midi/{date}.json` |
-| `GET /crosswords/oracle/{publish_type}` | `svc/crosswords/v2/oracle/{publish_type}.json` (current and next puzzle; `daily`, `midi`, `mini`) |
-| `GET /crosswords/game/{game_id}?publish_type=daily` | `svc/games/state/crossword_{publish_type}/latests?puzzle_ids={game_id}` (your saved progress) |
+| `GET /crosswords/bonus/{date}` | `svc/crosswords/v6/puzzle/bonus/{date}.json` |
+| `GET /crosswords/puzzles` | `svc/crosswords/v3/puzzles.json` |
+| `GET /crosswords/oracle/{publish_type}` | `svc/crosswords/v2/oracle/{publish_type}.json` |
+| `GET /crosswords/game/{game_id}?publish_type=daily` | `svc/games/state/crossword_{publish_type}/latests` |
 | `GET /letter-boxed/{date}` | `svc/letter-boxed/v1/{date}.json` |
-| `GET /player/stats` | `svc/games/state/wordleV2/latests?puzzle_ids=0` (your stats for every game) |
+| `GET /player/stats` | `svc/games/state/wordleV2/latests?puzzle_ids=0` |
 | `GET /spelling-bee` | Scraped from `puzzles/spelling-bee` |
-| `GET /spelling-bee/latest` | `svc/games/state/spelling_bee/latests` (up to 30 `puzzle_ids`) |
-| `GET /spelling-bee/{date}` | `svc/spelling-bee/v1/{date}.json` (from 2018-05-06) |
+| `GET /spelling-bee/latest` | `svc/games/state/spelling_bee/latests` |
+| `GET /spelling-bee/{date}` | `svc/spelling-bee/v1/{date}.json` |
 | `GET /spelling-bee/{date}/hints` | Computed from the puzzle above |
 | `GET /strands/{date}` | `svc/strands/v2/{date}.json` |
 | `GET /wordle/latest` | `svc/games/state/wordleV2/latests` |
 | `GET /wordle/{date}` | `svc/wordle/v2/{date}.json` |
 
-Upstream errors (e.g. a 404 for a date with no puzzle) are returned with the
-upstream status code.
+NYT errors are returned with NYT's status code, for example 404 for a date
+with no puzzle.
 
-## Development
+## Contributing
 
-```bash
-pip install -e ".[api,test]"
-pytest
-cd api && uvicorn main:app --reload --port 8080
-```
-
-`api/build.sh` builds the image locally. `api/develop.sh` runs the deployed
-image with the repo mounted and auto-reload enabled.
-
-## Deployment
-
-`api/cloudbuild.yaml` builds the image, pushes it to Artifact Registry
-(`us-central1-docker.pkg.dev/$PROJECT_ID/docker/nytgames`) tagged `latest` and
-`$SHORT_SHA`, and deploys it to the `nytgames` Cloud Run service in
-`us-central1`.
+NYT changes these APIs without notice, so bug reports with the failing date
+and error are very welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) to set up a
+development environment.
 
 ## License
 
-MIT. This project is not affiliated with The New York Times.
+MIT. This project is not affiliated with or endorsed by The New York Times.
+NYT puzzles are copyrighted by The New York Times; please respect their terms
+of service and don't republish puzzle content.

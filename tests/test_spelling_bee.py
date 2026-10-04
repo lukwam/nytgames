@@ -9,7 +9,7 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
-import main
+from nytgames import api as main
 from nytgames import NYTGamesClient
 from nytgames import NYTGamesNotFoundError
 from nytgames import spelling_bee_hints

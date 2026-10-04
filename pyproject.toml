@@ -44,16 +44,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-api = ["fastapi>=0.111"]
-test = ["httpx", "pytest"]
+api = ["fastapi>=0.111", "uvicorn>=0.30"]
+test = ["fastapi>=0.111", "httpx", "pytest"]
 
 [project.urls]
 Homepage = "https://github.com/lukwam/nytimes-games"
 Issues = "https://github.com/lukwam/nytimes-games/issues"
 Releases = "https://github.com/lukwam/nytimes-games/releases"
+Changelog = "https://github.com/lukwam/nytimes-games/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-include = ["nytgames*"]
+where = ["src"]
 
 [tool.setuptools.package-data]
 nytgames = ["py.typed"]
@@ -63,4 +64,3 @@ version = { attr = "nytgames.__version__" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["api"]

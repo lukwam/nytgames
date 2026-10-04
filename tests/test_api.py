@@ -9,7 +9,7 @@ import pytest
 import requests
 from fastapi.testclient import TestClient
 
-import main
+from nytgames import api as main
 from nytgames.client import get_game_data
 
 client = TestClient(main.app)
@@ -233,3 +233,37 @@ def test_wordle_latest_states_are_models(nyt):
     response = client.get("/wordle/latest?puzzle_ids=829")
     assert response.status_code == 200
     assert response.json()["states"][0]["game_data"]["status"] == "IN_PROGRESS"
+
+
+def test_create_app_accepts_fastapi_settings():
+    """create_app() passes settings through to FastAPI."""
+    app = main.create_app(title="My NYT API", docs_url=None)
+    assert app.title == "My NYT API"
+    assert TestClient(app).get("/docs").status_code == 404
+
+
+def test_router_mounts_in_your_own_app_with_your_own_client(nyt):
+    """The router can be mounted under a prefix, with a client using your cookies."""
+    from fastapi import FastAPI
+
+    from nytgames import NYTGamesClient
+
+    app = FastAPI()
+    app.include_router(main.router, prefix="/nyt")
+    main.add_exception_handlers(app)
+    app.dependency_overrides[main.get_client] = lambda: NYTGamesClient(cookies="NYT-S=server")
+
+    nyt.return_value = mock_response(WORDLE)
+    response = TestClient(app).get("/nyt/wordle/2021-06-19")
+    assert response.status_code == 200
+    assert nyt.call_args.kwargs["cookies"] == {"NYT-S": "server"}
+
+    nyt.return_value = mock_response(status_code=404)
+    assert TestClient(app).get("/nyt/wordle/1900-01-01").status_code == 404
+
+
+def test_parse_errors_return_502(nyt):
+    """A Spelling Bee page without game data returns 502, not 500."""
+    nyt.return_value = mock_response(content=b"<html></html>")
+    response = client.get("/spelling-bee")
+    assert response.status_code == 502
