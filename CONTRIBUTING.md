@@ -1,0 +1,66 @@
+# Contributing
+
+Thanks for helping. NYT changes its games APIs without notice, so reports of
+something that stopped working are as valuable as code.
+
+## Reporting a bug
+
+Open an issue with:
+
+- the method you called and its arguments (for example `connections("2026-05-06")`)
+- the full error message
+- your `nytimes-games` version (`python -c "import nytgames; print(nytgames.__version__)"`)
+
+Never include your `NYT-S` cookie or other cookies in an issue.
+
+## Development setup
+
+```bash
+git clone https://github.com/lukwam/nytimes-games.git
+cd nytimes-games
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[api,test]"
+pytest
+```
+
+The tests mock NYT, so they run offline and don't need cookies.
+
+Run the API locally with auto-reload:
+
+```bash
+uvicorn nytgames.api:app --reload
+```
+
+## Project layout
+
+```
+src/nytgames/
+    client.py        NYTGamesClient: one method per NYT endpoint
+    models.py        Pydantic models for NYT's responses
+    exceptions.py    Error types
+    spelling_bee.py  Spelling Bee hints
+    api.py           Optional FastAPI app and router (the "api" extra)
+tests/
+examples/api/        Example main.py and Dockerfile for running your own API
+```
+
+## Adding or fixing an endpoint
+
+1. Add a method to `NYTGamesClient` in `client.py`, and a model in `models.py`.
+   Models allow extra fields, so only type the fields you use or document.
+2. Add a route to `api.py` that calls the client method.
+3. Add tests that mock the NYT response, and check the method against NYT
+   before opening a pull request.
+4. Update the tables in `README.md` and add a line to `CHANGELOG.md`.
+
+## Pull requests
+
+Tests run on Python 3.10 to 3.13 for every pull request. Keep changes focused,
+and explain in the description what you checked against NYT.
+
+## Releases
+
+Maintainers release by bumping `__version__` in `src/nytgames/__init__.py`,
+updating `CHANGELOG.md`, and pushing a `vX.Y.Z` tag. The publish workflow
+checks the tag matches the version, runs the tests and publishes to PyPI.

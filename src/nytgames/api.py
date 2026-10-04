@@ -1,21 +1,41 @@
-"""NYT Games API."""
-import json
-import logging
+"""FastAPI app and router for the NYT Games API.
+
+Requires the `api` extra::
+
+    pip install "nytimes-games[api]"
+
+Run the ready-made app with ``uvicorn nytgames.api:app``, build your own with
+``create_app()``, or mount ``router`` in an existing FastAPI app (then call
+``add_exception_handlers()`` on that app too).
+
+By default each request is made with the cookies sent to the API. To use other
+cookies, such as your own from a secret, override the ``get_client``
+dependency::
+
+    app = create_app()
+    app.dependency_overrides[get_client] = lambda: NYTGamesClient(cookies=...)
+"""
+from typing import Any
 from typing import Optional
+
+try:
+    from fastapi import APIRouter
+    from fastapi import Depends
+    from fastapi import FastAPI
+    from fastapi import Path
+    from fastapi import Query
+    from fastapi import Request
+    from fastapi.responses import JSONResponse
+except ImportError as err:  # pragma: no cover
+    raise ImportError(
+        'nytgames.api requires FastAPI. Install it with: pip install "nytimes-games[api]"'
+    ) from err
 
 import requests
 
-from fastapi import Depends
-from fastapi import FastAPI
-from fastapi import Path
-from fastapi import Query
-
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.responses import Response
-from starlette.responses import StreamingResponse
-
+from nytgames import __version__
 from nytgames import NYTGamesClient
+from nytgames import NYTGamesParseError
 from nytgames import spelling_bee_hints
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
@@ -32,7 +52,23 @@ from nytgames.models import StrandsPuzzle
 from nytgames.models import WordlePuzzle
 from nytgames.models import WordlePuzzlesList
 
-logging.basicConfig(level=logging.INFO)
+__all__ = ["add_exception_handlers", "app", "create_app", "get_client", "router"]
+
+OPENAPI_TAGS = [
+    {"name": "Connections", "description": "Connections Puzzles operations"},
+    {"name": "Crosswords", "description": "Crossword Puzzles operations"},
+    {"name": "Crosswords - Bonus", "description": "Crossword Bonus Puzzles operations"},
+    {"name": "Crosswords - Daily", "description": "Crossword Daily Puzzles operations"},
+    {"name": "Crosswords - Midi", "description": "Crossword Midi Puzzles operations"},
+    {"name": "Crosswords - Mini", "description": "Crossword Mini Puzzles operations"},
+    {"name": "Letter Boxed", "description": "Letter Boxed Puzzles operations"},
+    {"name": "Player", "description": "Player stats operations"},
+    {"name": "Spelling Bee", "description": "Spelling Bee Puzzles operations"},
+    {"name": "Strands", "description": "Strands Puzzles operations"},
+    {"name": "Wordle", "description": "Wordle Puzzles operations"},
+]
+
+router = APIRouter()
 
 
 def get_client(request: Request) -> NYTGamesClient:
@@ -40,91 +76,51 @@ def get_client(request: Request) -> NYTGamesClient:
     return NYTGamesClient(cookies=request.cookies)
 
 
-app = FastAPI(
-    contact={
-        "name": "Lukas Karlsson",
-        "email": "lukwam@gmail.com",
-        "url": "https://github.com/lukwam",
-    },
-    description="NYT Games API built with FastAPI",
-    openapi_tags=[
-        {"name": "Connections", "description": "Connections Puzzles operations"},
-        {"name": "Crosswords", "description": "Crossword Puzzles operations"},
-        {"name": "Crosswords - Bonus", "description": "Crossword Bonus Puzzles operations"},
-        {"name": "Crosswords - Daily", "description": "Crossword Daily Puzzles operations"},
-        {"name": "Crosswords - Midi", "description": "Crossword Midi Puzzles operations"},
-        {"name": "Crosswords - Mini", "description": "Crossword Mini Puzzles operations"},
-        {"name": "Letter Boxed", "description": "Letter Boxed Puzzles operations"},
-        {"name": "Player", "description": "Player stats operations"},
-        {"name": "Spelling Bee", "description": "Spelling Bee Puzzles operations"},
-        {"name": "Strands", "description": "Strands Puzzles operations"},
-        {"name": "Wordle", "description": "Wordle Puzzles operations"},
-    ],
-    title="NYT Games API",
-    version="0.0.1",
-)
-
-
-@app.exception_handler(requests.HTTPError)
-async def upstream_http_error_handler(
-    request: Request,
-    exc: requests.HTTPError,
-) -> JSONResponse:
-    """Return upstream NYT HTTP errors with the upstream status code."""
+async def nyt_http_error_handler(request: Request, exc: requests.HTTPError) -> JSONResponse:
+    """Return NYT HTTP errors with NYT's status code."""
     status_code = exc.response.status_code if exc.response is not None else 502
     return JSONResponse(
         status_code=status_code,
-        content={"detail": f"NYT API returned {status_code}", "url": str(request.url)},
+        content={"detail": f"NYT API returned {status_code}"},
     )
 
 
-@app.middleware("http")
-async def pretty_print_json_response(
-    request: Request,
-    call_next
-) -> Response:
-    """Pretty print JSON Response."""
-    response = await call_next(request)
+async def nyt_parse_error_handler(request: Request, exc: NYTGamesParseError) -> JSONResponse:
+    """Return 502 when an NYT page did not contain the expected game data."""
+    return JSONResponse(status_code=502, content={"detail": str(exc)})
 
-    # Paths to exclude from pretty printing
-    excluded_paths = ["/docs", "/redoc", "/openapi.json"]
 
-    # Skip excluded paths and non-streaming responses
-    if request.url.path in excluded_paths or not isinstance(response, StreamingResponse):
-        return response
+def add_exception_handlers(app: FastAPI) -> None:
+    """Return NYT errors from the client as HTTP responses instead of 500s."""
+    app.add_exception_handler(requests.HTTPError, nyt_http_error_handler)
+    app.add_exception_handler(NYTGamesParseError, nyt_parse_error_handler)
 
-    # Collect the stream into a single bytes object
-    body = b""
-    async for chunk in response.body_iterator:
-        if isinstance(chunk, str):
-            chunk = chunk.encode()  # Ensure chunk is bytes
-        body += chunk
 
-    # Only modify application/json responses
-    if response.headers.get('content-type') == 'application/json':
-        data = json.loads(body.decode())
-        pretty_json = json.dumps(
-            data,
-            ensure_ascii=False,
-            allow_nan=False,
-            indent=4,
-            separators=(", ", ": "),
-        ).encode("utf-8")
+def create_app(**kwargs: Any) -> FastAPI:
+    """Return a FastAPI app serving the NYT Games API.
 
-        # Create a new response with the pretty JSON and original status code
-        response.headers["Content-Length"] = str(len(pretty_json))
-        return Response(
-            content=pretty_json,
-            status_code=response.status_code,
-            media_type="application/json",
-            headers=dict(response.headers),
-        )
-
-    return response
+    Keyword arguments are passed to FastAPI and override the defaults, for
+    example ``create_app(title="My NYT API", docs_url=None)``.
+    """
+    settings = {
+        "title": "NYT Games API",
+        "description": (
+            "Unofficial API for the New York Times Games, built with "
+            "[nytimes-games](https://github.com/lukwam/nytimes-games)."
+        ),
+        "version": __version__,
+        "openapi_tags": OPENAPI_TAGS,
+        "license_info": {"name": "MIT", "identifier": "MIT"},
+    }
+    settings.update(kwargs)
+    app = FastAPI(**settings)
+    app.include_router(router)
+    add_exception_handlers(app)
+    return app
 
 
 # Connections
-@app.get(
+@router.get(
     "/connections/{date}",
     response_model=ConnectionsPuzzle,
     summary="Get the Connections puzzle for a specific date",
@@ -148,7 +144,7 @@ def get_connections_puzzle(
 
 
 # Crosswords
-@app.get(
+@router.get(
     "/crosswords/game/{game_id}",
     response_model=CrosswordGame,
     summary="Get a Crossword Game",
@@ -176,7 +172,7 @@ def get_crossword_game(
     return client.crossword_game(game_id, publish_type)
 
 
-@app.get(
+@router.get(
     "/crosswords/oracle/{publish_type}",
     response_model=CrosswordOracle,
     summary="Get the current and next Crossword puzzle",
@@ -201,7 +197,7 @@ def get_crossword_oracle(
 
 
 # Crossword - Bonus
-@app.get(
+@router.get(
     "/crosswords/bonus/{date}",
     response_model=CrosswordPuzzle,
     summary="Get the Crossword Bonus puzzle for a specific date",
@@ -225,7 +221,7 @@ def get_crossword_bonus(
 
 
 # Crossword - Daily
-@app.get(
+@router.get(
     "/crosswords/daily/today",
     response_model=CrosswordPuzzle,
     summary="Get the Crossword Daily puzzle for today",
@@ -247,7 +243,7 @@ def get_crossword_puzzle_daily(
     return client.crossword(CrosswordPublishType.daily)
 
 
-@app.get(
+@router.get(
     "/crosswords/daily/{date}",
     response_model=CrosswordPuzzle,
     summary="Get the Crossword Daily puzzle for a specific date",
@@ -270,7 +266,7 @@ def get_crossword_puzzle(
 
 
 # Crossword - Midi
-@app.get(
+@router.get(
     "/crosswords/midi/today",
     response_model=CrosswordPuzzle,
     summary="Get the Crossword Midi puzzle for today",
@@ -292,7 +288,7 @@ def get_crossword_midi_daily(
     return client.crossword(CrosswordPublishType.midi)
 
 
-@app.get(
+@router.get(
     "/crosswords/midi/{date}",
     response_model=CrosswordPuzzle,
     summary="Get the Crossword Midi puzzle for a specific date",
@@ -315,7 +311,7 @@ def get_crossword_midi(
 
 
 # Crossword - Mini
-@app.get(
+@router.get(
     "/crosswords/mini/today",
     response_model=CrosswordPuzzle,
     summary="Get the Crossword Mini puzzle for today",
@@ -337,7 +333,7 @@ def get_crossword_mini_daily(
     return client.crossword(CrosswordPublishType.mini)
 
 
-@app.get(
+@router.get(
     "/crosswords/mini/{date}",
     response_model=CrosswordPuzzle,
     summary="Get the Crossword Mini puzzle for a specific date",
@@ -359,7 +355,7 @@ def get_crossword_mini(
     return client.crossword(CrosswordPublishType.mini, date)
 
 
-@app.get(
+@router.get(
     "/crosswords/puzzles",
     response_model=CrosswordPuzzlesList,
     summary="List Crossword Puzzles",
@@ -393,7 +389,7 @@ def list_crossword_puzzles(
 
 
 # Letter Boxed
-@app.get(
+@router.get(
     "/letter-boxed/{date}",
     response_model=LetterBoxedPuzzle,
     summary="Get the Letter Boxed puzzle for a specific date",
@@ -416,7 +412,7 @@ def get_letter_boxed_puzzle(
 
 
 # Player
-@app.get(
+@router.get(
     "/player/stats",
     response_model=Player,
     summary="Get the user's stats for every game",
@@ -440,7 +436,7 @@ def get_player_stats(
 
 
 # Spelling Bee
-@app.get(
+@router.get(
     "/spelling-bee",
     response_model=SpellingBeeGameData,
     summary="Get current Spelling Bee data",
@@ -461,7 +457,7 @@ def get_spelling_bee(
     return client.spelling_bee()
 
 
-@app.get(
+@router.get(
     "/spelling-bee/latest",
     response_model=SpellingBeeLatest,
     summary="List latest Spelling Bee puzzles",
@@ -483,7 +479,7 @@ def get_spelling_bee_latest(
     return client.spelling_bee_latest(puzzle_ids)
 
 
-@app.get(
+@router.get(
     "/spelling-bee/{date}",
     response_model=SpellingBeeGameDay,
     summary="Get the Spelling Bee puzzle for a specific date",
@@ -506,7 +502,7 @@ def get_spelling_bee_puzzle(
     return client.spelling_bee_puzzle(date)
 
 
-@app.get(
+@router.get(
     "/spelling-bee/{date}/hints",
     summary="Get the Spelling Bee hints for a specific date",
     tags=["Spelling Bee"])
@@ -530,7 +526,7 @@ def get_spelling_bee_puzzle_hints(
 
 
 # Strands
-@app.get(
+@router.get(
     "/strands/{date}",
     response_model=StrandsPuzzle,
     summary="Get the Strands puzzle for a specific date",
@@ -553,7 +549,7 @@ def get_strands_puzzle(
 
 
 # Wordle
-@app.get(
+@router.get(
     "/wordle/latest",
     response_model=WordlePuzzlesList,
     summary="List latest Wordle puzzles",
@@ -575,7 +571,7 @@ def list_latest_wordle_puzzles(
     return client.wordle_latest(puzzle_ids)
 
 
-@app.get(
+@router.get(
     "/wordle/{date}",
     response_model=WordlePuzzle,
     summary="Get the Wordle puzzle for a specific date",
@@ -595,3 +591,6 @@ def get_wordle_puzzle(
     ```
     """
     return client.wordle(date)
+
+
+app = create_app()
