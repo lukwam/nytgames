@@ -224,6 +224,14 @@ later are kept rather than rejected, so new NYT fields don't break your code.
 Use `.model_dump()` to get plain dicts, and `by_alias=True` to keep NYT's
 original keys, such as `"Queen Bee"` in the Spelling Bee ranks.
 
+## Examples
+
+[`examples/`](examples) has small projects built on the package: an
+alternative [Letter Boxed solver](examples/letter_boxed_solver.py) using the
+day's accepted words, [clue reuse](examples/clue_reuse.py) across recent
+crosswords, your [solve times](examples/solve_times.py) by weekday and
+constructor, and [your own REST API](examples/api) in Docker.
+
 ## Async apps
 
 `NYTGamesClient` is synchronous, but works in async apps as long as its calls
