@@ -1,13 +1,11 @@
 """NYT Games API."""
 import json
 import logging
-import re
 from typing import Optional
 
 import requests
 
-from bs4 import BeautifulSoup
-
+from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import Path
 from fastapi import Query
@@ -17,49 +15,25 @@ from starlette.responses import JSONResponse
 from starlette.responses import Response
 from starlette.responses import StreamingResponse
 
-from models import ConnectionsPuzzle
-from models import CrosswordGame
-from models import CrosswordOracle
-from models import CrosswordPublishType
-from models import CrosswordPuzzle
-from models import CrosswordPuzzlesList
-from models import SpellingBeeGameData
-from models import SpellingBeeLatest
-from models import StrandsPuzzle
-from models import WordlePuzzle
-from models import WordlePuzzlesList
+from nytgames import NYTGamesClient
+from nytgames.models import ConnectionsPuzzle
+from nytgames.models import CrosswordGame
+from nytgames.models import CrosswordOracle
+from nytgames.models import CrosswordPublishType
+from nytgames.models import CrosswordPuzzle
+from nytgames.models import CrosswordPuzzlesList
+from nytgames.models import SpellingBeeGameData
+from nytgames.models import SpellingBeeLatest
+from nytgames.models import StrandsPuzzle
+from nytgames.models import WordlePuzzle
+from nytgames.models import WordlePuzzlesList
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
-def get_game_data(body: bytes) -> dict | None:
-    """Get Game Data from Spelling Bee Page."""
-    soup = BeautifulSoup(body, 'html.parser')
-    script_tag = soup.find('script', string=re.compile(r'window\.gameData\s*='))
-    if script_tag:
-        script_content = script_tag.string
-        if script_content.startswith("window.gameData = {"):
-            return json.loads(script_content[len("window.gameData = "):])
-    return None
-
-
-def get(url, request: Request, params=None) -> dict:
-    """Return the response from a GET request."""
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    }
-    response = requests.get(
-        url,
-        cookies=request.cookies,
-        headers=headers,
-        params=params,
-        timeout=30,
-    )
-    logger.info("GET %s", response.request.url)
-    response.raise_for_status()
-    return response.json()
+def get_client(request: Request) -> NYTGamesClient:
+    """Return an NYT Games client using the cookies sent with the request."""
+    return NYTGamesClient(cookies=request.cookies)
 
 
 app = FastAPI(
@@ -150,8 +124,8 @@ async def pretty_print_json_response(
     summary="Get the Connections puzzle for a specific date",
     tags=["Connections"],
 )
-async def get_connections_puzzle(
-    request: Request,
+def get_connections_puzzle(
+    client: NYTGamesClient = Depends(get_client),
     date: str = Path(..., examples=["2023-06-12"]),
 ) -> ConnectionsPuzzle:
     """
@@ -164,11 +138,7 @@ async def get_connections_puzzle(
     GET https://www.nytimes.com/svc/connections/v2/{date}.json
     ```
     """
-    response = get(
-        f"https://www.nytimes.com/svc/connections/v2/{date}.json",
-        request=request
-    )
-    return ConnectionsPuzzle(**response)
+    return client.connections(date)
 
 
 # Crosswords
@@ -178,8 +148,8 @@ async def get_connections_puzzle(
     summary="Get a Crossword Game",
     tags=["Crosswords"],
 )
-async def get_crossword_game(
-    request: Request,
+def get_crossword_game(
+    client: NYTGamesClient = Depends(get_client),
     game_id: str = Path(..., examples=["24287"]),
     publish_type: CrosswordPublishType = Query(
         CrosswordPublishType.daily,
@@ -197,12 +167,7 @@ async def get_crossword_game(
     GET https://www.nytimes.com/svc/games/state/crossword_{publish_type}/latests?puzzle_ids={game_id}
     ```
     """
-    response = get(
-        f"https://www.nytimes.com/svc/games/state/crossword_{publish_type.value}/latests",
-        params={"puzzle_ids": game_id},
-        request=request,
-    )
-    return CrosswordGame(**response)
+    return client.crossword_game(game_id, publish_type)
 
 
 @app.get(
@@ -211,8 +176,8 @@ async def get_crossword_game(
     summary="Get the current and next Crossword puzzle",
     tags=["Crosswords"],
 )
-async def get_crossword_oracle(
-    request: Request,
+def get_crossword_oracle(
+    client: NYTGamesClient = Depends(get_client),
     publish_type: CrosswordPublishType = Path(..., examples=["daily"]),
 ) -> CrosswordOracle:
     """
@@ -226,11 +191,7 @@ async def get_crossword_oracle(
     GET https://www.nytimes.com/svc/crosswords/v2/oracle/{publish_type}.json
     ```
     """
-    response = get(
-        f"https://www.nytimes.com/svc/crosswords/v2/oracle/{publish_type.value}.json",
-        request=request,
-    )
-    return CrosswordOracle(**response)
+    return client.crossword_oracle(publish_type)
 
 
 # Crossword - Bonus
@@ -240,8 +201,8 @@ async def get_crossword_oracle(
     summary="Get the Crossword Bonus puzzle for a specific date",
     tags=["Crosswords - Bonus"],
 )
-async def get_crossword_bonus(
-    request: Request,
+def get_crossword_bonus(
+    client: NYTGamesClient = Depends(get_client),
     date: str = Path(..., examples=["1997-02-01"]),
 ) -> CrosswordPuzzle:
     """
@@ -254,11 +215,7 @@ async def get_crossword_bonus(
     GET https://www.nytimes.com/svc/crosswords/v6/puzzle/bonus/{date}.json
     ```
     """
-    response = get(
-        f"https://www.nytimes.com/svc/crosswords/v6/puzzle/bonus/{date}.json",
-        request=request,
-    )
-    return CrosswordPuzzle(**response)
+    return client.crossword(CrosswordPublishType.bonus, date)
 
 
 # Crossword - Daily
@@ -268,7 +225,9 @@ async def get_crossword_bonus(
     summary="Get the Crossword Daily puzzle for today",
     tags=["Crosswords - Daily"],
 )
-async def get_crossword_puzzle_daily(request: Request) -> CrosswordPuzzle:
+def get_crossword_puzzle_daily(
+    client: NYTGamesClient = Depends(get_client),
+) -> CrosswordPuzzle:
     """
     **Get the Crossword Daily puzzle for today**
 
@@ -279,11 +238,7 @@ async def get_crossword_puzzle_daily(request: Request) -> CrosswordPuzzle:
     GET https://www.nytimes.com/svc/crosswords/v6/puzzle/daily.json
     ```
     """
-    response = get(
-        "https://www.nytimes.com/svc/crosswords/v6/puzzle/daily.json",
-        request=request,
-    )
-    return CrosswordPuzzle(**response)
+    return client.crossword(CrosswordPublishType.daily)
 
 
 @app.get(
@@ -291,8 +246,8 @@ async def get_crossword_puzzle_daily(request: Request) -> CrosswordPuzzle:
     response_model=CrosswordPuzzle,
     summary="Get the Crossword Daily puzzle for a specific date",
     tags=["Crosswords - Daily"])
-async def get_crossword_puzzle(
-    request: Request,
+def get_crossword_puzzle(
+    client: NYTGamesClient = Depends(get_client),
     date: str = Path(..., examples=["1993-11-21"]),
 ) -> CrosswordPuzzle:
     """
@@ -305,11 +260,7 @@ async def get_crossword_puzzle(
     GET https://www.nytimes.com/svc/crosswords/v6/puzzle/daily/{date}.json
     ```
     """
-    response = get(
-        f"https://www.nytimes.com/svc/crosswords/v6/puzzle/daily/{date}.json",
-        request=request
-    )
-    return CrosswordPuzzle(**response)
+    return client.crossword(CrosswordPublishType.daily, date)
 
 
 # Crossword - Midi
@@ -319,8 +270,8 @@ async def get_crossword_puzzle(
     summary="Get the Crossword Midi puzzle for today",
     tags=["Crosswords - Midi"]
 )
-async def get_crossword_midi_daily(
-    request: Request,
+def get_crossword_midi_daily(
+    client: NYTGamesClient = Depends(get_client),
 ) -> CrosswordPuzzle:
     """
     **Get a Crossword Midi puzzle**
@@ -332,11 +283,7 @@ async def get_crossword_midi_daily(
     GET https://www.nytimes.com/svc/crosswords/v6/puzzle/midi.json
     ```
     """
-    response = get(
-        "https://www.nytimes.com/svc/crosswords/v6/puzzle/midi.json",
-        request=request
-    )
-    return CrosswordPuzzle(**response)
+    return client.crossword(CrosswordPublishType.midi)
 
 
 @app.get(
@@ -344,8 +291,8 @@ async def get_crossword_midi_daily(
     response_model=CrosswordPuzzle,
     summary="Get the Crossword Midi puzzle for a specific date",
     tags=["Crosswords - Midi"])
-async def get_crossword_midi(
-    request: Request,
+def get_crossword_midi(
+    client: NYTGamesClient = Depends(get_client),
     date: str = Path(..., examples=["2026-10-01"]),
 ) -> CrosswordPuzzle:
     """
@@ -358,11 +305,7 @@ async def get_crossword_midi(
     GET https://www.nytimes.com/svc/crosswords/v6/puzzle/midi/{date}.json
     ```
     """
-    response = get(
-        f"https://www.nytimes.com/svc/crosswords/v6/puzzle/midi/{date}.json",
-        request=request
-    )
-    return CrosswordPuzzle(**response)
+    return client.crossword(CrosswordPublishType.midi, date)
 
 
 # Crossword - Mini
@@ -372,8 +315,8 @@ async def get_crossword_midi(
     summary="Get the Crossword Mini puzzle for today",
     tags=["Crosswords - Mini"]
 )
-async def get_crossword_mini_daily(
-    request: Request,
+def get_crossword_mini_daily(
+    client: NYTGamesClient = Depends(get_client),
 ) -> CrosswordPuzzle:
     """
     **Get a Crossword Mini puzzle**
@@ -385,11 +328,7 @@ async def get_crossword_mini_daily(
     GET https://www.nytimes.com/svc/crosswords/v6/puzzle/mini.json
     ```
     """
-    response = get(
-        "https://www.nytimes.com/svc/crosswords/v6/puzzle/mini.json",
-        request=request
-    )
-    return CrosswordPuzzle(**response)
+    return client.crossword(CrosswordPublishType.mini)
 
 
 @app.get(
@@ -397,8 +336,8 @@ async def get_crossword_mini_daily(
     response_model=CrosswordPuzzle,
     summary="Get the Crossword Mini puzzle for a specific date",
     tags=["Crosswords - Mini"])
-async def get_crossword_mini(
-    request: Request,
+def get_crossword_mini(
+    client: NYTGamesClient = Depends(get_client),
     date: str = Path(..., examples=["2025-06-12"]),
 ) -> CrosswordPuzzle:
     """
@@ -411,11 +350,7 @@ async def get_crossword_mini(
     GET https://www.nytimes.com/svc/crosswords/v6/puzzle/mini/{date}.json
     ```
     """
-    response = get(
-        f"https://www.nytimes.com/svc/crosswords/v6/puzzle/mini/{date}.json",
-        request=request
-    )
-    return CrosswordPuzzle(**response)
+    return client.crossword(CrosswordPublishType.mini, date)
 
 
 @app.get(
@@ -424,14 +359,14 @@ async def get_crossword_mini(
     summary="List Crossword Puzzles",
     tags=["Crosswords"],
 )
-async def list_crossword_puzzles(
-    request: Request,
+def list_crossword_puzzles(
+    client: NYTGamesClient = Depends(get_client),
     publish_type: Optional[CrosswordPublishType] = Query(None, examples=["daily"]),
     sort_order: Optional[str] = Query(None, examples=["asc"]),
     sort_by: Optional[str] = Query(None, examples=["print_date"]),
     date_start: Optional[str] = Query(None, examples=["2024-07-01"]),
     date_end: Optional[str] = Query(None, examples=["2024-07-31"])
-):
+) -> CrosswordPuzzlesList:
     """
     **List Crossword Puzzles**
 
@@ -442,43 +377,13 @@ async def list_crossword_puzzles(
     GET https://www.nytimes.com/svc/crosswords/v3/puzzles.json
     ```
     """
-    params = {
-        "publish_type": publish_type,
-        "sort_order": sort_order,
-        "sort_by": sort_by,
-        "date_start": date_start,
-        "date_end": date_end,
-    }
-    response = get(
-        "https://www.nytimes.com/svc/crosswords/v3/puzzles.json",
-        params=params,
-        request=request
+    return client.crossword_puzzles(
+        publish_type=publish_type,
+        sort_order=sort_order,
+        sort_by=sort_by,
+        date_start=date_start,
+        date_end=date_end,
     )
-    return CrosswordPuzzlesList(**response)
-
-
-# pylint: disable=line-too-long,too-many-arguments
-# @app.get("/crosswords/{user_id}/puzzles.json", response_model=CrosswordPuzzlesList, tags=["Crossword"])
-# async def list_user_crossword_puzzles(
-#     user_id,
-#     publish_type: str = Query(default="daily"),
-#     sort_order: str = Query(default="asc"),
-#     sort_by: str = Query(default="print_date"),
-#     date_start: str = Query(default="2024-01-01"),
-#     date_end: str = Query(default="2024-12-31"),
-# ):
-#     """List Crossword Puzzles."""
-#     params = {
-#         "publish_type": publish_type,
-#         "sort_order": sort_order,
-#         "sort_by": sort_by,
-#         "date_start": date_start,
-#         "date_end": date_end,
-#     }
-#     url = f"https://www.nytimes.com/svc/crosswords/v3/{user_id}/puzzles.json"
-#     response = requests.get(url, params=params, timeout=10)
-#     response.raise_for_status()
-#     return response.json()
 
 
 # Spelling Bee
@@ -487,8 +392,8 @@ async def list_crossword_puzzles(
     response_model=SpellingBeeGameData,
     summary="Get current Spelling Bee data",
     tags=["Spelling Bee"])
-async def get_spelling_bee(
-    request: Request,
+def get_spelling_bee(
+    client: NYTGamesClient = Depends(get_client),
 ) -> SpellingBeeGameData:
     """
     **Get Current Spelling Bee Data**
@@ -500,15 +405,7 @@ async def get_spelling_bee(
     GET https://www.nytimes.com/puzzles/spelling-bee
     ```
     """
-    url = "https://www.nytimes.com/puzzles/spelling-bee"
-    response = requests.get(
-        url,
-        cookies=request.cookies,
-        timeout=30,
-    )
-    response.raise_for_status()
-    game_data = get_game_data(response.content) or {}
-    return SpellingBeeGameData(**game_data)
+    return client.spelling_bee()
 
 
 @app.get(
@@ -516,8 +413,8 @@ async def get_spelling_bee(
     response_model=SpellingBeeLatest,
     summary="List latest Spelling Bee puzzles",
     tags=["Spelling Bee"])
-async def get_spelling_bee_latest(
-    request: Request,
+def get_spelling_bee_latest(
+    client: NYTGamesClient = Depends(get_client),
     puzzle_ids: str = Query(None, examples=["1,2,3,4,5,6,7"]),
 ) -> SpellingBeeLatest:
     """
@@ -530,11 +427,7 @@ async def get_spelling_bee_latest(
     GET https://www.nytimes.com/svc/games/state/spelling_bee/latests
     ```
     """
-    url = "https://www.nytimes.com/svc/games/state/spelling_bee/latests"
-    if puzzle_ids:
-        url = f"{url}?puzzle_ids={puzzle_ids}"
-    response = get(url, request=request)
-    return SpellingBeeLatest(**response)
+    return client.spelling_bee_latest(puzzle_ids)
 
 
 # Strands
@@ -543,8 +436,8 @@ async def get_spelling_bee_latest(
     response_model=StrandsPuzzle,
     summary="Get the Strands puzzle for a specific date",
     tags=["Strands"])
-async def get_strands_puzzle(
-    request: Request,
+def get_strands_puzzle(
+    client: NYTGamesClient = Depends(get_client),
     date: str = Path(..., examples=["2024-03-04"]),
 ) -> StrandsPuzzle:
     """
@@ -557,8 +450,7 @@ async def get_strands_puzzle(
     GET https://www.nytimes.com/svc/strands/v2/{date}.json
     ```
     """
-    response = get(f"https://www.nytimes.com/svc/strands/v2/{date}.json", request=request)
-    return StrandsPuzzle(**response)
+    return client.strands(date)
 
 
 # Wordle
@@ -567,8 +459,8 @@ async def get_strands_puzzle(
     response_model=WordlePuzzlesList,
     summary="List latest Wordle puzzles",
     tags=["Wordle"])
-async def list_latest_wordle_puzzles(
-    request: Request,
+def list_latest_wordle_puzzles(
+    client: NYTGamesClient = Depends(get_client),
     puzzle_ids: str = Query(None, examples=["1,2,3,4,5,6,7"]),
 ) -> WordlePuzzlesList:
     """
@@ -581,11 +473,7 @@ async def list_latest_wordle_puzzles(
     GET https://www.nytimes.com/svc/games/state/wordleV2/latests
     ```
     """
-    url = "https://www.nytimes.com/svc/games/state/wordleV2/latests"
-    if puzzle_ids:
-        url = f"{url}?puzzle_ids={puzzle_ids}"
-    response = get(url, request=request)
-    return WordlePuzzlesList(**response)
+    return client.wordle_latest(puzzle_ids)
 
 
 @app.get(
@@ -593,8 +481,8 @@ async def list_latest_wordle_puzzles(
     response_model=WordlePuzzle,
     summary="Get the Wordle puzzle for a specific date",
     tags=["Wordle"])
-async def get_wordle_puzzle(
-    request: Request,
+def get_wordle_puzzle(
+    client: NYTGamesClient = Depends(get_client),
     date: str = Path(..., examples=["2021-06-19"]),
 ) -> WordlePuzzle:
     """
@@ -607,5 +495,4 @@ async def get_wordle_puzzle(
     GET https://www.nytimes.com/svc/wordle/v2/{date}.json
     ```
     """
-    response = get(f"https://www.nytimes.com/svc/wordle/v2/{date}.json", request=request)
-    return WordlePuzzle(**response)
+    return client.wordle(date)

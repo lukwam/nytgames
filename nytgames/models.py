@@ -1,4 +1,4 @@
-"""NYT Games API models module."""
+"""NYT Games models."""
 from enum import Enum
 from typing import Dict
 from typing import List

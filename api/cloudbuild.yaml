@@ -2,10 +2,11 @@
 steps:
   - id: build-image
     name: gcr.io/cloud-builders/docker
-    dir: api
     entrypoint: docker
     args:
       - build
+      - -f
+      - api/Dockerfile
       - -t
       - us-central1-docker.pkg.dev/$PROJECT_ID/docker/nytgames:latest
       - .

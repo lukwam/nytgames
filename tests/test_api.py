@@ -10,6 +10,7 @@ import requests
 from fastapi.testclient import TestClient
 
 import main
+from nytgames.client import get_game_data
 
 client = TestClient(main.app)
 
@@ -30,8 +31,8 @@ def mock_response(json_data=None, status_code=200, content=b""):
 
 @pytest.fixture
 def nyt():
-    """Patch requests.get in main and yield the mock."""
-    with mock.patch("main.requests.get") as patched:
+    """Patch the HTTP session used by NYTGamesClient and yield the mock."""
+    with mock.patch("requests.Session.get") as patched:
         yield patched
 
 
@@ -164,8 +165,8 @@ def test_upstream_error_status_is_passed_through(nyt):
 def test_get_game_data():
     """Spelling Bee game data is parsed from the page script tag."""
     body = b'<html><script>window.gameData = {"today": {"id": 1}}</script></html>'
-    assert main.get_game_data(body) == {"today": {"id": 1}}
-    assert main.get_game_data(b"<html></html>") is None
+    assert get_game_data(body) == {"today": {"id": 1}}
+    assert get_game_data(b"<html></html>") is None
 
 
 def test_crossword_game_uses_game_state_endpoint(nyt):
