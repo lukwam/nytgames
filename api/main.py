@@ -7,6 +7,7 @@ import requests
 
 from fastapi import Depends
 from fastapi import FastAPI
+from fastapi import HTTPException
 from fastapi import Path
 from fastapi import Query
 
@@ -16,6 +17,7 @@ from starlette.responses import Response
 from starlette.responses import StreamingResponse
 
 from nytgames import NYTGamesClient
+from nytgames import spelling_bee_hints
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
 from nytgames.models import CrosswordOracle
@@ -23,6 +25,7 @@ from nytgames.models import CrosswordPublishType
 from nytgames.models import CrosswordPuzzle
 from nytgames.models import CrosswordPuzzlesList
 from nytgames.models import SpellingBeeGameData
+from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
 from nytgames.models import StrandsPuzzle
 from nytgames.models import WordlePuzzle
@@ -428,6 +431,56 @@ def get_spelling_bee_latest(
     ```
     """
     return client.spelling_bee_latest(puzzle_ids)
+
+
+@app.get(
+    "/spelling-bee/{date}",
+    response_model=SpellingBeeGameDay,
+    summary="Get the Spelling Bee puzzle for a specific date",
+    tags=["Spelling Bee"])
+def get_spelling_bee_puzzle(
+    client: NYTGamesClient = Depends(get_client),
+    date: str = Path(..., examples=["2026-10-03"]),
+) -> SpellingBeeGameDay:
+    """
+    **Get a Spelling Bee puzzle**
+
+    Returns the Spelling Bee puzzle for the date provided in the path parameter.
+    Only puzzles from about the last two weeks are available.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/puzzles/spelling-bee
+    ```
+    """
+    puzzles = client.spelling_bee_puzzles()
+    if date not in puzzles:
+        raise HTTPException(status_code=404, detail=f"Spelling Bee {date} is not available")
+    return puzzles[date]
+
+
+@app.get(
+    "/spelling-bee/{date}/hints",
+    summary="Get the Spelling Bee hints for a specific date",
+    tags=["Spelling Bee"])
+def get_spelling_bee_puzzle_hints(
+    client: NYTGamesClient = Depends(get_client),
+    date: str = Path(..., examples=["2026-10-03"]),
+) -> dict:
+    """
+    **Get Spelling Bee hints**
+
+    Returns Spelling Bee Forum style hints (word counts by first letter and
+    length, two-letter starts, pangrams and points) for the date provided in
+    the path parameter. Only puzzles from about the last two weeks are
+    available.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/puzzles/spelling-bee
+    ```
+    """
+    return spelling_bee_hints(get_spelling_bee_puzzle(client, date))
 
 
 # Strands

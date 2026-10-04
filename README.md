@@ -19,7 +19,7 @@ pip install git+https://github.com/lukwam/nytgames.git
 ```
 
 ```python
-from nytgames import NYTGamesClient
+from nytgames import NYTGamesClient, spelling_bee_hints
 
 client = NYTGamesClient(cookies="NYT-S=...")
 
@@ -30,6 +30,9 @@ client.crossword("mini", "2025-06-12")    # daily, mini, midi or bonus
 client.crossword_oracle("midi")           # current and next puzzle IDs
 client.crossword_game(24287)              # your saved progress on a puzzle
 client.crossword_puzzles("daily", date_start="2025-06-01", date_end="2025-06-30")
+
+puzzles = client.spelling_bee_puzzles()   # {print_date: puzzle}, about the last two weeks
+spelling_bee_hints(puzzles["2026-10-03"])  # Spelling Bee Forum style hints
 ```
 
 `cookies` can be a dict, a `Cookie` header string, or a list of cookie objects
@@ -62,7 +65,9 @@ Interactive docs are served at `/docs` and `/redoc`.
 | `GET /crosswords/oracle/{publish_type}` | `svc/crosswords/v2/oracle/{publish_type}.json` (current and next puzzle; `daily`, `midi`, `mini`) |
 | `GET /crosswords/game/{game_id}?publish_type=daily` | `svc/games/state/crossword_{publish_type}/latests?puzzle_ids={game_id}` (your saved progress) |
 | `GET /spelling-bee` | Scraped from `puzzles/spelling-bee` |
-| `GET /spelling-bee/latest` | `svc/games/state/spelling_bee/latests` |
+| `GET /spelling-bee/latest` | `svc/games/state/spelling_bee/latests` (up to 30 `puzzle_ids`) |
+| `GET /spelling-bee/{date}` | Scraped from `puzzles/spelling-bee` (about the last two weeks) |
+| `GET /spelling-bee/{date}/hints` | Computed from the puzzle above |
 | `GET /strands/{date}` | `svc/strands/v2/{date}.json` |
 | `GET /wordle/latest` | `svc/games/state/wordleV2/latests` |
 | `GET /wordle/{date}` | `svc/wordle/v2/{date}.json` |

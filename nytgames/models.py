@@ -185,8 +185,8 @@ class SpellingBeeGamePastPuzzles(NYTModel):
     """Spelling Bee Game Past Puzzles."""
     today: SpellingBeeGameDay
     yesterday: SpellingBeeGameDay
-    lastWeek: list
-    thisWeek: list
+    lastWeek: List[SpellingBeeGameDay]
+    thisWeek: List[SpellingBeeGameDay]
 
 
 class SpellingBeeGameData(NYTModel):

@@ -16,6 +16,7 @@ from nytgames.models import CrosswordPublishType
 from nytgames.models import CrosswordPuzzle
 from nytgames.models import CrosswordPuzzlesList
 from nytgames.models import SpellingBeeGameData
+from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
 from nytgames.models import StrandsPuzzle
 from nytgames.models import WordlePuzzle
@@ -162,12 +163,33 @@ class NYTGamesClient:
 
     # Spelling Bee
     def spelling_bee(self) -> SpellingBeeGameData:
-        """Return the current Spelling Bee data scraped from the game page."""
+        """Return the current Spelling Bee data scraped from the game page.
+
+        Raises ValueError if the page does not contain the game data.
+        """
         response = self._get("/puzzles/spelling-bee", json_response=False)
-        return SpellingBeeGameData(**(get_game_data(response.content) or {}))
+        game_data = get_game_data(response.content)
+        if game_data is None:
+            raise ValueError("Spelling Bee game data not found in the page")
+        return SpellingBeeGameData(**game_data)
+
+    def spelling_bee_puzzles(self) -> dict[str, SpellingBeeGameDay]:
+        """Return every Spelling Bee puzzle on the game page, keyed by print date.
+
+        The page includes today's puzzle and the puzzles back to the start of
+        last week (about two weeks). Older puzzles are not available.
+        """
+        game_data = self.spelling_bee()
+        past = game_data.pastPuzzles
+        puzzles = [game_data.today, game_data.yesterday, *past.thisWeek, *past.lastWeek]
+        return {puzzle.printDate: puzzle for puzzle in sorted(puzzles, key=lambda p: p.printDate)}
 
     def spelling_bee_latest(self, puzzle_ids: str | None = None) -> SpellingBeeLatest:
-        """Return the user's latest Spelling Bee game states."""
+        """Return the user's latest Spelling Bee game states.
+
+        `puzzle_ids` is a comma separated list of up to 30 puzzle IDs (NYT
+        returns HTTP 400 for more). With no IDs, `states` is empty.
+        """
         response = self._get(
             "/svc/games/state/spelling_bee/latests",
             params={"puzzle_ids": puzzle_ids},
