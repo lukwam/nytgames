@@ -4,6 +4,20 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## Unreleased
+
+### Added
+
+- A live check of every game against NYT runs every morning, with a README
+  badge showing the latest result. Failures open an issue automatically.
+- A coverage badge.
+
+### Fixed
+
+- `crossword_puzzles()` returned a validation error when NYT sends null
+  results (for empty ranges and ranges that are too long); it now returns an
+  empty list. Its docs recommend ranges of 90 days or less.
+
 ## 0.7.0
 
 ### Added

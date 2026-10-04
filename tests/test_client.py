@@ -258,3 +258,9 @@ def test_crossword_clue_without_label():
     from nytgames.models import CrosswordPuzzleClue
     clue = CrosswordPuzzleClue(cells=[1, 2], direction="Around", text=[{"plain": "Self-descriptive"}])
     assert clue.label is None
+
+
+def test_crossword_puzzles_null_results_are_empty(session):
+    """NYT returns null results for empty or too long ranges."""
+    session.get.return_value.json.return_value = {"status": "OK", "results": None}
+    assert NYTGamesClient(session=session).crossword_puzzles("daily", date_start="2030-01-01").results == []

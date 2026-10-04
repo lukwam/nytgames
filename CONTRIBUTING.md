@@ -55,6 +55,17 @@ examples/api/        Example main.py and Dockerfile for running your own API
 docs/                The README screenshot; regenerate it with docs/make_screenshot.py
 ```
 
+## Checking against NYT
+
+The tests mock NYT. To check the real APIs, run the same live check that runs
+every morning in GitHub Actions:
+
+```bash
+python scripts/live_check.py
+```
+
+Set `NYT_COOKIES` to also check the endpoints that need cookies.
+
 ## Adding or fixing an endpoint
 
 1. Add a method to `NYTGamesClient` in `client.py`, and a model in `models.py`.
