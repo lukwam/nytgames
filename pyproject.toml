@@ -1,15 +1,42 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nytgames"
+name = "nytimes-games"
 dynamic = ["version"]
-description = "Unofficial client for the New York Times Games APIs"
+description = "Unofficial Python client for the New York Times Games APIs: Wordle, Connections, Strands, Spelling Bee, Letter Boxed and the crosswords"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Lukas Karlsson", email = "lukwam@gmail.com" }]
 requires-python = ">=3.10"
+keywords = [
+    "nytimes",
+    "nyt",
+    "games",
+    "wordle",
+    "connections",
+    "strands",
+    "spelling-bee",
+    "letter-boxed",
+    "crossword",
+    "puzzles",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment :: Puzzle Games",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = [
     "beautifulsoup4>=4.12",
     "pydantic>=2.8",
@@ -22,9 +49,14 @@ test = ["httpx", "pytest"]
 
 [project.urls]
 Homepage = "https://github.com/lukwam/nytgames"
+Issues = "https://github.com/lukwam/nytgames/issues"
+Releases = "https://github.com/lukwam/nytgames/releases"
 
 [tool.setuptools.packages.find]
 include = ["nytgames*"]
+
+[tool.setuptools.package-data]
+nytgames = ["py.typed"]
 
 [tool.setuptools.dynamic]
 version = { attr = "nytgames.__version__" }

@@ -1,4 +1,9 @@
-# nytgames
+# nytimes-games
+
+[![PyPI](https://img.shields.io/pypi/v/nytimes-games)](https://pypi.org/project/nytimes-games/)
+[![Python](https://img.shields.io/pypi/pyversions/nytimes-games)](https://pypi.org/project/nytimes-games/)
+[![Test](https://github.com/lukwam/nytgames/actions/workflows/test.yml/badge.svg)](https://github.com/lukwam/nytgames/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/lukwam/nytgames/blob/main/LICENSE)
 
 Unofficial Python client and API for the New York Times Games APIs (Wordle,
 Connections, Strands, Spelling Bee, Letter Boxed and the Daily, Mini, Midi and
@@ -6,17 +11,19 @@ Bonus crosswords). Responses are validated with Pydantic models.
 
 This repo contains:
 
-- `nytgames/`: an installable Python library (`NYTGamesClient`)
+- `nytgames/`: the Python library, published on PyPI as `nytimes-games`
 - `api/`: a FastAPI service built on the library, deployed to Cloud Run
 
-Subscriber content and your game state require your NYT session cookie
-(`NYT-S`) from a logged in nytimes.com browser session.
+Puzzles are available without logging in. Your game progress and stats require
+your NYT session cookie (`NYT-S`) from a logged in nytimes.com browser session.
 
 ## Library
 
 ```bash
-pip install git+https://github.com/lukwam/nytgames.git
+pip install nytimes-games
 ```
+
+The package installs as `nytimes-games` and is imported as `nytgames`.
 
 ```python
 from nytgames import NYTGamesClient, spelling_bee_hints
