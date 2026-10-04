@@ -23,7 +23,6 @@ from nytgames.cli.output import key_value_table
 from nytgames.cli.state import date_arg
 from nytgames.cli.state import state
 
-history_app = typer.Typer(help="Your results for a range of dates.", no_args_is_help=True)
 
 # NYT returns game states for at most 30 puzzle IDs per request.
 STATE_BATCH = 30
@@ -40,7 +39,11 @@ def register(app: typer.Typer) -> None:
     """Add the player commands to the root app."""
     app.command("stats")(stats)
     app.command("today")(today)
-    app.add_typer(history_app, name="history")
+    history = typer.Typer(help="Your results for a range of dates.", no_args_is_help=True)
+    history.command("crossword")(history_crossword)
+    history.command("wordle")(history_wordle)
+    history.command("bee")(history_bee)
+    app.add_typer(history, name="history")
 
 
 def chunks(items: list, size: int) -> Iterator[list]:
@@ -364,7 +367,6 @@ def crossword_results(client, kind: str, first: datetime.date, last: datetime.da
     return rows
 
 
-@history_app.command("crossword")
 def history_crossword(
     publish_type: Annotated[CrosswordKind, typer.Argument(help="daily, mini, midi or bonus.")] = CrosswordKind.daily,
     start: FromOption = None,
@@ -396,7 +398,6 @@ def history_crossword(
     emit(rows, fmt, table)
 
 
-@history_app.command("wordle")
 def history_wordle(start: FromOption = None, end: ToOption = None, fmt: FormatOption = None) -> None:
     """Your Wordle results: won or lost, and guesses."""
     client = state.client()
@@ -430,7 +431,6 @@ def history_wordle(start: FromOption = None, end: ToOption = None, fmt: FormatOp
     emit(rows, fmt, table)
 
 
-@history_app.command("bee")
 def history_bee(start: FromOption = None, end: ToOption = None, fmt: FormatOption = None) -> None:
     """Your Spelling Bee results: rank and words found."""
     client = state.client()

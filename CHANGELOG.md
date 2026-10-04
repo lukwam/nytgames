@@ -4,6 +4,23 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.6.0
+
+### Added
+
+- `nytgames.cli.extension`: a public API for building command lines on top
+  of nytg. `create_app(name=, help=, version=)` returns an independent Typer
+  app with every nytg command and root option, and `run(app)` runs it with
+  nytg's error messages and exit codes. `emit()`, `FormatOption`,
+  `get_client()`, `resolve_cookies()`, `active_profile()`, `get_setting()`,
+  `parse_date()`, `key_value_table()` and the Rich consoles help extension
+  commands behave like nytg's. `create_app` and `run` are also importable
+  from `nytgames.cli`.
+
+### Changed
+
+- Error messages name the running command, for example `mytool auth login`.
+
 ## 0.5.0
 
 ### Added
