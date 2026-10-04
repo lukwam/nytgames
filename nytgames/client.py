@@ -199,8 +199,9 @@ class NYTGamesClient:
     def letter_boxed(self, date: str) -> LetterBoxedPuzzle:
         """Return the Letter Boxed puzzle for a date (YYYY-MM-DD).
 
-        Puzzles are available from 2019 on, and NYT also serves the next day or
-        two ahead of time.
+        Puzzles are available from 2018-12-17, and NYT also serves the next day
+        or two ahead of time. A few early dates have no puzzle (2018-12-21 to
+        2019-01-05 and 2019-01-25) and raise NYTGamesNotFoundError.
         """
         return LetterBoxedPuzzle(**self._get(f"/svc/letter-boxed/v1/{date}.json"))
 
