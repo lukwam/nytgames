@@ -16,10 +16,6 @@ from nytgames.cli.output import emit
 from nytgames.cli.output import key_value_table
 from nytgames.cli.state import state
 
-auth_app = typer.Typer(help="Log in with your NYT cookies and check them.", no_args_is_help=True)
-config_app = typer.Typer(help="View and change nytg settings.", no_args_is_help=True)
-profiles_app = typer.Typer(help="Manage named profiles, such as one per NYT account.", no_args_is_help=True)
-config_app.add_typer(profiles_app, name="profiles")
 
 
 def mask(value: str) -> str:
@@ -35,7 +31,6 @@ def cookie_header(cookies: dict[str, str]) -> str:
     return "; ".join(f"{name}={value}" for name, value in cookies.items())
 
 
-@auth_app.command("login")
 def login(
     cookie_file: Annotated[
         Optional[Path],
@@ -80,7 +75,6 @@ def login(
     console.print(f"Saved cookies to profile [bold]{profile}[/bold] in {state.config.path}")
 
 
-@auth_app.command("status")
 def status(fmt: FormatOption = None) -> None:
     """Show which cookies are in use and whether NYT accepts them."""
     cookies, source = state.resolve_cookies()
@@ -102,7 +96,6 @@ def status(fmt: FormatOption = None) -> None:
         raise typer.Exit(1)
 
 
-@auth_app.command("logout")
 def logout() -> None:
     """Remove the saved cookies from the active profile."""
     profile = state.active_profile
@@ -118,7 +111,6 @@ def check_key(key: str) -> str:
     return key
 
 
-@config_app.command("list")
 def config_list(fmt: FormatOption = None) -> None:
     """Show the settings in the active profile."""
     profile = state.active_profile
@@ -128,7 +120,6 @@ def config_list(fmt: FormatOption = None) -> None:
     emit(data, fmt, lambda d: [key_value_table(d)])
 
 
-@config_app.command("get")
 def config_get(key: Annotated[str, typer.Argument(help=", ".join(KEYS))]) -> None:
     """Print one setting from the active profile."""
     value = state.config.get(state.active_profile, check_key(key))
@@ -137,7 +128,6 @@ def config_get(key: Annotated[str, typer.Argument(help=", ".join(KEYS))]) -> Non
     typer.echo(value)
 
 
-@config_app.command("set")
 def config_set(
     key: Annotated[str, typer.Argument(help=", ".join(KEYS))],
     value: Annotated[Optional[str], typer.Argument(help="Prompted for (hidden) if omitted.")] = None,
@@ -150,20 +140,17 @@ def config_set(
     console.print(f"Set [cyan]{key}[/cyan] in profile [bold]{state.active_profile}[/bold].")
 
 
-@config_app.command("unset")
 def config_unset(key: Annotated[str, typer.Argument(help=", ".join(KEYS))]) -> None:
     """Remove a setting from the active profile."""
     if not state.config.unset(state.active_profile, check_key(key)):
         console.print(f"[cyan]{key}[/cyan] isn't set in profile [bold]{state.active_profile}[/bold].")
 
 
-@config_app.command("path")
 def config_path() -> None:
     """Print the path of the config file."""
     typer.echo(state.config.path)
 
 
-@profiles_app.command("list")
 def profiles_list(fmt: FormatOption = None) -> None:
     """List profiles and show which one is active."""
     active = state.active_profile
@@ -187,17 +174,40 @@ def profiles_list(fmt: FormatOption = None) -> None:
     emit(data, fmt, table)
 
 
-@profiles_app.command("activate")
 def profiles_activate(name: str) -> None:
     """Make a profile the default for future commands."""
     state.config.activate(name)
     console.print(f"Activated profile [bold]{name}[/bold].")
 
 
-@profiles_app.command("delete")
 def profiles_delete(name: str) -> None:
     """Delete a profile and its settings."""
     if not state.config.delete_profile(name):
         console.print(f"No profile named [bold]{name}[/bold].")
         raise typer.Exit(1)
     console.print(f"Deleted profile [bold]{name}[/bold].")
+
+
+def build_auth_app() -> typer.Typer:
+    """Return a new `auth` command group."""
+    app = typer.Typer(help="Log in with your NYT cookies and check them.", no_args_is_help=True)
+    app.command("login")(login)
+    app.command("status")(status)
+    app.command("logout")(logout)
+    return app
+
+
+def build_config_app() -> typer.Typer:
+    """Return a new `config` command group, with its `profiles` subgroup."""
+    app = typer.Typer(help="View and change settings.", no_args_is_help=True)
+    app.command("list")(config_list)
+    app.command("get")(config_get)
+    app.command("set")(config_set)
+    app.command("unset")(config_unset)
+    app.command("path")(config_path)
+    profiles = typer.Typer(help="Manage named profiles, such as one per NYT account.", no_args_is_help=True)
+    profiles.command("list")(profiles_list)
+    profiles.command("activate")(profiles_activate)
+    profiles.command("delete")(profiles_delete)
+    app.add_typer(profiles, name="profiles")
+    return app

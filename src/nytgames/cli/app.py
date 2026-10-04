@@ -1,6 +1,12 @@
-"""nytg: the NYT Games command line."""
+"""nytg: the NYT Games command line.
+
+``create_app()`` builds the command line and ``run()`` runs it with nytg's
+error handling. Both are public through ``nytgames.cli.extension``, so other
+tools can build their own command line on top of nytg's.
+"""
 import sys
 from typing import Annotated
+from typing import Any
 from typing import Optional
 
 import requests
@@ -18,62 +24,89 @@ from nytgames.cli import settings
 from nytgames.cli.config import Config
 from nytgames.cli.state import state
 
-app = typer.Typer(
-    name="nytg",
-    help="Puzzles, stats and archives from the New York Times Games.",
-    no_args_is_help=True,
-    rich_markup_mode="rich",
-    pretty_exceptions_enable=False,
-    context_settings={"help_option_names": ["-h", "--help"]},
-)
-puzzles.register(app)
-player.register(app)
-app.command("archive")(archive.archive)
-app.add_typer(settings.auth_app, name="auth")
-app.add_typer(settings.config_app, name="config")
+DEFAULT_NAME = "nytg"
+DEFAULT_HELP = """Puzzles, stats and archives from the New York Times Games.
+
+Puzzles work without logging in. For your stats and progress, run
+[bold]{name} auth login[/bold] with your NYT-S cookie, or set NYT_COOKIES.
+"""
 
 
-def version_callback(value: bool) -> None:
-    if value:
-        typer.echo(f"nytg {__version__}")
-        raise typer.Exit()
+def create_app(
+    name: str = DEFAULT_NAME,
+    help: str | None = None,
+    version: str | None = None,
+    **typer_kwargs: Any,
+) -> typer.Typer:
+    """Return a new Typer app with every nytg command.
 
+    Each call returns an independent app, so commands added to one don't
+    affect another. ``name`` and ``help`` set the command name and its help,
+    ``version`` is what ``--version`` prints (nytimes-games' version by
+    default), and other keyword arguments are passed to ``typer.Typer``.
 
-@app.callback()
-def root(
-    profile: Annotated[
-        Optional[str],
-        typer.Option("--profile", "-p", envvar="NYTG_PROFILE", help="Profile to use for this command."),
-    ] = None,
-    cookies: Annotated[
-        Optional[str],
-        typer.Option("--cookies", help="NYT cookies for this command, e.g. NYT-S=... (or set NYT_COOKIES).",
-                     show_default=False),
-    ] = None,
-    fmt: output.FormatOption = None,
-    version: Annotated[
-        bool, typer.Option("--version", callback=version_callback, is_eager=True, help="Show the version.")
-    ] = False,
-) -> None:
-    """Puzzles, stats and archives from the New York Times Games.
-
-    Puzzles work without logging in. For your stats and progress, run
-    [bold]nytg auth login[/bold] with your NYT-S cookie, or set NYT_COOKIES.
+    The app has nytg's root options: --profile, --cookies, --format and
+    --version. Run it with ``run(app)`` to get nytg's error messages.
     """
-    state.config = Config()
-    state.profile = profile
-    state.cookies = cookies
-    output.default_format = fmt or state.config.get(state.active_profile, "format")
+    settings_kwargs = {
+        "name": name,
+        "no_args_is_help": True,
+        "rich_markup_mode": "rich",
+        "pretty_exceptions_enable": False,
+        "context_settings": {"help_option_names": ["-h", "--help"]},
+    }
+    settings_kwargs.update(typer_kwargs)
+    app = typer.Typer(**settings_kwargs)
+    help_text = help or DEFAULT_HELP.format(name=name)
+    version_text = f"{name} {version or __version__}"
+
+    def version_callback(value: bool) -> None:
+        if value:
+            typer.echo(version_text)
+            raise typer.Exit()
+
+    @app.callback(help=help_text)
+    def root(
+        profile: Annotated[
+            Optional[str],
+            typer.Option("--profile", "-p", envvar="NYTG_PROFILE", help="Profile to use for this command."),
+        ] = None,
+        cookies: Annotated[
+            Optional[str],
+            typer.Option("--cookies", help="NYT cookies for this command, e.g. NYT-S=... (or set NYT_COOKIES).",
+                         show_default=False),
+        ] = None,
+        fmt: output.FormatOption = None,
+        version: Annotated[
+            bool, typer.Option("--version", callback=version_callback, is_eager=True, help="Show the version.")
+        ] = False,
+    ) -> None:
+        state.config = Config()
+        state.profile = profile
+        state.cookies = cookies
+        output.default_format = fmt or state.config.get(state.active_profile, "format")
+
+    puzzles.register(app)
+    player.register(app)
+    app.command("archive")(archive.archive)
+    app.add_typer(settings.build_auth_app(), name="auth")
+    app.add_typer(settings.build_config_app(), name="config")
+    return app
 
 
-def main() -> None:
-    """Run nytg, turning NYT errors into short messages."""
+def run(app: typer.Typer) -> None:
+    """Run an app, turning NYT errors into short messages and exit codes.
+
+    Exits with 1 for NYT errors (rejected cookies, no puzzle, unreadable
+    responses, failed requests), 2 for usage errors and 130 for Ctrl-C.
+    """
+    name = app.info.name or DEFAULT_NAME
     try:
         app()
     except NYTGamesAuthenticationError:
         output.err_console.print(
             "[red]NYT rejected the request.[/red] This needs your NYT cookies, which are missing "
-            "or have expired. Run [bold]nytg auth login[/bold] or set NYT_COOKIES."
+            f"or have expired. Run [bold]{name} auth login[/bold] or set NYT_COOKIES."
         )
         sys.exit(1)
     except NYTGamesNotFoundError:
@@ -87,6 +120,14 @@ def main() -> None:
         sys.exit(1)
     except KeyboardInterrupt:
         sys.exit(130)
+
+
+app = create_app()
+
+
+def main() -> None:
+    """Run nytg."""
+    run(app)
 
 
 if __name__ == "__main__":

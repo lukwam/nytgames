@@ -48,6 +48,7 @@ src/nytgames/
         archive.py   archive
         settings.py  auth and config commands
         output.py    --format handling, shared by every command
+        extension.py Public API for tools built on nytg; keep it backwards compatible
 tests/
 examples/api/        Example main.py and Dockerfile for running your own API
 docs/                The README screenshot; regenerate it with docs/make_screenshot.py

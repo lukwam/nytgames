@@ -221,6 +221,38 @@ nytg config profiles list
 `--profile` or `NYTG_PROFILE` picks a profile for one command. Run
 `nytg --install-completion` for shell completion.
 
+### Building your own command line
+
+`nytgames.cli.extension` lets you build a command line with every `nytg`
+command plus your own, sharing its root options (`--profile`, `--cookies`,
+`--format`), output formats and error messages:
+
+```python
+import typer
+from nytgames.cli.extension import FormatOption, create_app, emit, get_client, run
+
+app = create_app(name="mytool", help="My NYT tools.", version="1.0.0")
+db = typer.Typer(help="Query my archive.")
+app.add_typer(db, name="db")
+
+
+@db.command("midis")
+def midis(fmt: FormatOption = None) -> None:
+    """September's Midi crosswords."""
+    puzzles = get_client().archive("crossword_midi", "2026-09-01", "2026-09-30")
+    emit([{"date": p.print_date, "by": p.byline} for p in puzzles], fmt)
+
+
+def main() -> None:   # point your [project.scripts] entry here
+    run(app)
+```
+
+Each `create_app()` call returns an independent app. `emit(data, fmt,
+table)` prints JSON-compatible data in the requested format, with an optional
+function that renders the table format. `get_client()` returns a client with
+the cookies `nytg` would use. The other modules in `nytgames.cli` are
+internal.
+
 ## REST API
 
 The optional `api` extra serves everything as a REST API with
