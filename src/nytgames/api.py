@@ -22,6 +22,7 @@ try:
     from fastapi import APIRouter
     from fastapi import Depends
     from fastapi import FastAPI
+    from fastapi import HTTPException
     from fastapi import Path
     from fastapi import Query
     from fastapi import Request
@@ -379,13 +380,16 @@ def list_crossword_puzzles(
     GET https://www.nytimes.com/svc/crosswords/v3/puzzles.json
     ```
     """
-    return client.crossword_puzzles(
-        publish_type=publish_type,
-        sort_order=sort_order,
-        sort_by=sort_by,
-        date_start=date_start,
-        date_end=date_end,
-    )
+    try:
+        return client.crossword_puzzles(
+            publish_type=publish_type,
+            sort_order=sort_order,
+            sort_by=sort_by,
+            date_start=date_start,
+            date_end=date_end,
+        )
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err)) from None
 
 
 # Letter Boxed

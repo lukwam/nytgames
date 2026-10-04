@@ -7,7 +7,7 @@ something that stopped working are as valuable as code.
 
 Open an issue with:
 
-- the method you called and its arguments (for example `connections("2026-05-06")`)
+- the method or `nytg` command you ran (for example `connections("2026-05-06")`)
 - the full error message
 - your `nytimes-games` version (`python -c "import nytgames; print(nytgames.__version__)"`)
 
@@ -20,7 +20,7 @@ git clone https://github.com/lukwam/nytimes-games.git
 cd nytimes-games
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[api,test]"
+pip install -e ".[api,cli,test]"
 pytest
 ```
 
@@ -41,6 +41,13 @@ src/nytgames/
     exceptions.py    Error types
     spelling_bee.py  Spelling Bee hints
     api.py           Optional FastAPI app and router (the "api" extra)
+    cli/             Optional nytg command line (the "cli" extra)
+        app.py       Root command, global options and error messages
+        puzzles.py   Puzzle commands
+        player.py    stats, today and history
+        archive.py   archive
+        settings.py  auth and config commands
+        output.py    --format handling, shared by every command
 tests/
 examples/api/        Example main.py and Dockerfile for running your own API
 ```
@@ -49,7 +56,10 @@ examples/api/        Example main.py and Dockerfile for running your own API
 
 1. Add a method to `NYTGamesClient` in `client.py`, and a model in `models.py`.
    Models allow extra fields, so only type the fields you use or document.
-2. Add a route to `api.py` that calls the client method.
+2. Add a route to `api.py` that calls the client method, and a command to
+   `cli/` if it's useful on the command line. Commands build JSON-compatible
+   data and pass it to `output.emit()` with a table renderer, so every output
+   format works. Hide answers unless `--answers` is given.
 3. Add tests that mock the NYT response, and check the method against NYT
    before opening a pull request.
 4. Update the tables in `README.md` and add a line to `CHANGELOG.md`.

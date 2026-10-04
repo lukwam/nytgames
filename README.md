@@ -13,7 +13,7 @@ NYT doesn't publish documentation or an API spec for these endpoints. This
 package wraps them in one client with typed, validated
 [Pydantic](https://docs.pydantic.dev/) models, so you can build archives,
 stats dashboards, bots or your own games without reverse engineering NYT's
-APIs first. An optional extra serves everything as a REST API.
+APIs first. Optional extras add the `nytg` command line tool and a REST API.
 
 ## Installation
 
@@ -122,6 +122,93 @@ Every method returns Pydantic models from `nytgames.models`. Fields NYT adds
 later are kept rather than rejected, so new NYT fields don't break your code.
 Use `.model_dump()` to get plain dicts, and `by_alias=True` to keep NYT's
 original keys, such as `"Queen Bee"` in the Spelling Bee ranks.
+
+## Command line
+
+The optional `cli` extra installs `nytg`:
+
+```bash
+pipx install "nytimes-games[cli]"     # or: pip install "nytimes-games[cli]"
+```
+
+```bash
+nytg wordle                      # today's Wordle, without the answer
+nytg wordle yesterday --answers
+nytg connections friday -a       # the groups, in their colors
+nytg strands 2025-06-12
+nytg bee --hints                 # Spelling Bee Forum style hints
+nytg letter-boxed
+nytg crossword mini              # the grid and clues
+nytg crossword daily 1993-11-21 --answers
+```
+
+Answers are hidden unless you pass `--answers`, in every output format.
+Dates can be `YYYY-MM-DD`, `today`, `yesterday`, `tomorrow` or a weekday, and
+`first` for the first puzzle in `nytg archive`.
+
+### Your stats and history
+
+Log in once with your `NYT-S` cookie (see [Cookies](#cookies)):
+
+```bash
+nytg auth login                  # paste the cookie; it's checked, then saved
+nytg auth status
+```
+
+```bash
+nytg stats                       # every game at a glance
+nytg stats crossword             # averages, bests and streaks by weekday
+nytg today                       # which of today's games you've played
+nytg history crossword --from 2026-01-01 -f csv > solves.csv
+nytg history wordle --from monday
+nytg history bee
+```
+
+Cookies are read from `--cookies`, then the `NYT_COOKIES` environment
+variable, then the active profile.
+
+### Archiving
+
+```bash
+nytg archive connections --from first --out puzzles/
+```
+
+saves each date as `puzzles/connections/YYYY-MM-DD.json`. Run it again to
+resume: saved dates are skipped. Games: `wordle`, `connections`, `strands`,
+`spelling-bee`, `letter-boxed`, `crossword-daily`, `crossword-mini` and
+`crossword-midi`.
+
+### Output formats
+
+Every command takes `--format` (`-f`), like gcloud:
+
+| Format | Output |
+|---|---|
+| `table` | Tables and grids (the default) |
+| `json`, `yaml` | All the data |
+| `csv` | One row per item, nested fields as dotted columns |
+| `value(FIELD,...)` | Tab separated values for scripts, e.g. `value(categories[0].title)` |
+
+```bash
+nytg wordle --answers -f "value(solution)"
+nytg stats -f json | jq '.[] | select(.game == "Wordle")'
+```
+
+### Profiles and settings
+
+Settings are saved per profile in `~/.config/nytg/config.ini` (readable only
+by you), similar to gcloud configurations:
+
+```bash
+nytg config set format json      # default output format for this profile
+nytg config list
+nytg --profile alice auth login  # a second NYT account
+nytg config profiles activate alice
+nytg config profiles list
+```
+
+`--profile` or `NYTG_PROFILE` picks a profile for one command. Run
+`nytg --install-completion` for shell completion.
 
 ## REST API
 

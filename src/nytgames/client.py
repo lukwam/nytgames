@@ -36,6 +36,14 @@ NYT_BASE_URL = "https://www.nytimes.com"
 USER_AGENT = f"nytimes-games/{__version__} (+https://github.com/lukwam/nytimes-games)"
 
 Cookies = Mapping[str, str] | Iterable[Mapping[str, Any]] | str | None
+PuzzleIds = int | str | Iterable[int | str] | None
+
+
+def join_puzzle_ids(puzzle_ids: PuzzleIds) -> str | None:
+    """Return puzzle IDs as the comma separated string NYT expects."""
+    if puzzle_ids is None or isinstance(puzzle_ids, (int, str)):
+        return None if puzzle_ids is None else str(puzzle_ids)
+    return ",".join(str(puzzle_id) for puzzle_id in puzzle_ids)
 
 
 def parse_cookies(cookies: Cookies) -> dict[str, str]:
@@ -148,9 +156,20 @@ class NYTGamesClient:
         date_start: str | None = None,
         date_end: str | None = None,
     ) -> CrosswordPuzzlesList:
-        """Return a list of crossword puzzles, including the user's progress."""
+        """Return a list of crossword puzzles, including the user's progress.
+
+        `publish_type` is daily, mini or bonus. NYT returns at most 100 puzzles
+        per request. NYT's list doesn't include Midi puzzles (it returns Daily
+        puzzles instead), so `midi` raises ValueError; use crossword("midi",
+        date) and crossword_game() for Midi puzzles.
+        """
         if publish_type is not None:
             publish_type = CrosswordPublishType(publish_type).value
+            if publish_type == CrosswordPublishType.midi.value:
+                raise ValueError(
+                    "NYT's crossword list doesn't include Midi puzzles; "
+                    'use crossword("midi", date) and crossword_game() instead'
+                )
         params = {
             "publish_type": publish_type,
             "sort_order": sort_order,
@@ -162,17 +181,18 @@ class NYTGamesClient:
 
     def crossword_game(
         self,
-        puzzle_id: int | str,
+        puzzle_id: PuzzleIds,
         publish_type: CrosswordPublishType | str = CrosswordPublishType.daily,
     ) -> CrosswordGame:
-        """Return the user's saved game state for a crossword puzzle.
+        """Return the user's saved game state for one or more crossword puzzles.
 
-        `states` is empty if the user has not played the puzzle.
+        `puzzle_id` is a puzzle ID, a comma separated string or a list of up
+        to 30 IDs. `states` only includes puzzles the user has played.
         """
         publish_type = CrosswordPublishType(publish_type).value
         response = self._get(
             f"/svc/games/state/crossword_{publish_type}/latests",
-            params={"puzzle_ids": str(puzzle_id)},
+            params={"puzzle_ids": join_puzzle_ids(puzzle_id)},
         )
         return CrosswordGame(**response)
 
@@ -241,15 +261,16 @@ class NYTGamesClient:
         puzzles = [game_data.today, game_data.yesterday, *past.thisWeek, *past.lastWeek]
         return {puzzle.printDate: puzzle for puzzle in sorted(puzzles, key=lambda p: p.printDate)}
 
-    def spelling_bee_latest(self, puzzle_ids: str | None = None) -> SpellingBeeLatest:
+    def spelling_bee_latest(self, puzzle_ids: PuzzleIds = None) -> SpellingBeeLatest:
         """Return the user's latest Spelling Bee game states.
 
-        `puzzle_ids` is a comma separated list of up to 30 puzzle IDs (NYT
-        returns HTTP 400 for more). With no IDs, `states` is empty.
+        `puzzle_ids` is a puzzle ID, a comma separated string or a list of up
+        to 30 IDs (NYT returns HTTP 400 for more). With no IDs, `states` is
+        empty.
         """
         response = self._get(
             "/svc/games/state/spelling_bee/latests",
-            params={"puzzle_ids": puzzle_ids},
+            params={"puzzle_ids": join_puzzle_ids(puzzle_ids)},
         )
         return SpellingBeeLatest(**response)
 
@@ -263,10 +284,13 @@ class NYTGamesClient:
         """Return the Wordle puzzle for a date (YYYY-MM-DD)."""
         return WordlePuzzle(**self._get(f"/svc/wordle/v2/{date}.json"))
 
-    def wordle_latest(self, puzzle_ids: str | None = None) -> WordlePuzzlesList:
-        """Return the user's latest Wordle game states."""
+    def wordle_latest(self, puzzle_ids: PuzzleIds = None) -> WordlePuzzlesList:
+        """Return the user's latest Wordle game states.
+
+        `puzzle_ids` is a puzzle ID, a comma separated string or a list of IDs.
+        """
         response = self._get(
             "/svc/games/state/wordleV2/latests",
-            params={"puzzle_ids": puzzle_ids},
+            params={"puzzle_ids": join_puzzle_ids(puzzle_ids)},
         )
         return WordlePuzzlesList(**response)

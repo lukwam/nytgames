@@ -77,8 +77,8 @@ def test_crossword_rejects_unknown_type(session):
 def test_unset_params_are_not_sent(session):
     """Params that are not set are left out of the request."""
     session.get.return_value.json.return_value = {"results": [], "status": "OK"}
-    NYTGamesClient(session=session).crossword_puzzles(publish_type="midi", date_start="2026-10-01")
-    assert session.get.call_args.kwargs["params"] == {"publish_type": "midi", "date_start": "2026-10-01"}
+    NYTGamesClient(session=session).crossword_puzzles(publish_type="mini", date_start="2026-10-01")
+    assert session.get.call_args.kwargs["params"] == {"publish_type": "mini", "date_start": "2026-10-01"}
 
 
 def test_http_errors_are_raised(session):
@@ -195,3 +195,22 @@ def test_connections_picture_puzzle(session):
     assert image.image_alt_text == "SLOT MACHINE"
     assert image.text == "SLOT MACHINE"
     assert word.text == "BELL"
+
+
+@pytest.mark.parametrize("puzzle_ids,expected", [
+    (24287, "24287"),
+    ("1,2", "1,2"),
+    ([1, "2", 3], "1,2,3"),
+])
+def test_puzzle_ids_accept_lists(session, puzzle_ids, expected):
+    """Game state methods accept one ID, a comma separated string or a list."""
+    session.get.return_value.json.return_value = {"user_id": 1, "states": []}
+    NYTGamesClient(session=session).crossword_game(puzzle_ids)
+    assert session.get.call_args.kwargs["params"] == {"puzzle_ids": expected}
+
+
+def test_crossword_puzzles_rejects_midi(session):
+    """NYT's list returns Daily puzzles for Midi, so the client refuses to ask."""
+    with pytest.raises(ValueError, match="Midi"):
+        NYTGamesClient(session=session).crossword_puzzles("midi")
+    session.get.assert_not_called()

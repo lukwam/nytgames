@@ -267,3 +267,10 @@ def test_parse_errors_return_502(nyt):
     nyt.return_value = mock_response(content=b"<html></html>")
     response = client.get("/spelling-bee")
     assert response.status_code == 502
+
+
+def test_crossword_puzzles_midi_is_a_bad_request(nyt):
+    """NYT's list doesn't include Midi puzzles, so the API says so."""
+    response = client.get("/crosswords/puzzles?publish_type=midi")
+    assert response.status_code == 400
+    nyt.assert_not_called()
