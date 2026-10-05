@@ -73,9 +73,9 @@ class CrosswordGameState(NYTModel):
     """Crossword Game State."""
     game: str
     game_data: CrosswordGameData
-    print_date: str
+    print_date: str = ""
     puzzle_id: str
-    timestamp: int
+    timestamp: int | None = None
     user_id: int
 
 
@@ -497,22 +497,27 @@ SpellingBeePlayer = Player
 
 
 class SpellingBeeLatestStateGameData(NYTModel):
-    """Spelling Bee Latest State Game Data."""
-    answers: List[str]
-    isRevealed: bool
-    rank: str
+    """Spelling Bee Latest State Game Data.
+
+    Older games have no `rank`.
+    """
+    answers: List[str] = []
+    isRevealed: bool | None = None
+    isPlayingArchive: bool | None = None
+    rank: str | None = None
 
 
 class SpellingBeeLatestState(NYTModel):
     """Spelling Bee Latest State."""
     game_data: SpellingBeeLatestStateGameData
     game: str
-    print_date: str
+    # Often empty on older games; use puzzle_id instead.
+    print_date: str = ""
     puzzle_id: str
-    schema_version: str
-    timestamp: int
+    schema_version: str | None = None
+    timestamp: int | None = None
     user_id: int
-    version: str
+    version: str | None = None
 
 
 class SpellingBeeLatest(NYTModel):
@@ -552,23 +557,43 @@ class WordlePuzzle(NYTModel):
     solution: str
 
 
+class WordleRound(NYTModel):
+    """One round of a Wordle game in the rounds-based format."""
+    complete: bool | None = None
+    timeMs: int | None = None
+
+
 class WordleGameData(NYTModel):
-    """Wordle Game Data (the user's saved progress)."""
-    boardState: List[str]
-    currentRowIndex: int
+    """Wordle Game Data (the user's saved progress).
+
+    Most games have `boardState`, `currentRowIndex` and `status`. Some saved
+    games use a different, rounds-based format with `rounds`,
+    `currentRoundIndex` and `puzzleComplete` instead (and no guesses).
+    """
+    boardState: List[str] = []
+    currentRowIndex: int | None = None
     hardMode: bool | None = None
     isPlayingArchive: bool | None = None
-    status: str
+    status: str | None = None
+    currentRoundIndex: int | None = None
+    puzzleComplete: bool | None = None
+    rounds: List[WordleRound] = []
+
+    @property
+    def rounds_format(self) -> bool:
+        """Whether this game is in the rounds-based format, without guesses."""
+        return self.status is None and (bool(self.rounds) or self.puzzleComplete is not None)
 
 
 class WordleGameState(NYTModel):
     """Wordle Game State."""
     game: str
     game_data: WordleGameData
-    print_date: str
+    # Often empty on older games; use puzzle_id instead.
+    print_date: str = ""
     puzzle_id: str
     schema_version: str | None = None
-    timestamp: int
+    timestamp: int | None = None
     user_id: int
     version: str | None = None
 

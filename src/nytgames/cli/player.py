@@ -69,6 +69,13 @@ class Game(str, enum.Enum):
     crossword = "crossword"
 
 
+def wordle_status(game) -> str:
+    """A Wordle game's status, such as "win", for either saved game format."""
+    if game.status:
+        return game.status.lower().replace("_", " ")
+    return "played" if game.puzzleComplete else "in progress"
+
+
 def summary_rows(stats) -> list[dict[str, Any]]:
     """One row per game: played, won, win rate and streaks."""
     rows = []
@@ -239,7 +246,7 @@ def today(fmt: FormatOption = None) -> None:
     states = client.wordle_latest(wordle_id).states
     if states:
         g = states[0].game_data
-        rows.append({"game": "Wordle", "status": g.status.lower().replace("_", " "),
+        rows.append({"game": "Wordle", "status": wordle_status(g),
                      "detail": f"{g.currentRowIndex}/6" if g.status == "WIN" else ""})
     else:
         rows.append({"game": "Wordle", "status": "not played", "detail": ""})
@@ -252,7 +259,7 @@ def today(fmt: FormatOption = None) -> None:
     states = client.spelling_bee_latest(bee.id).states
     if states:
         g = states[0].game_data
-        rows.append({"game": "Spelling Bee", "status": g.rank,
+        rows.append({"game": "Spelling Bee", "status": g.rank or "played",
                      "detail": f"{len(g.answers)}/{len(bee.answers)} words"})
     else:
         rows.append({"game": "Spelling Bee", "status": "not played", "detail": ""})
@@ -413,7 +420,7 @@ def history_wordle(start: FromOption = None, end: ToOption = None, fmt: FormatOp
         g = states.get(puzzle_id)
         rows.append({
             "date": day, "puzzle_id": puzzle_id,
-            "status": g.status.lower() if g else "not played",
+            "status": wordle_status(g) if g else "not played",
             "guesses": g.currentRowIndex if g and g.status == "WIN" else None,
             "hard_mode": g.hardMode if g else None,
             "board": [w for w in g.boardState if w] if g else [],
@@ -454,7 +461,7 @@ def history_bee(start: FromOption = None, end: ToOption = None, fmt: FormatOptio
         found = set(g.answers) if g else set()
         rows.append({
             "date": puzzle.printDate, "puzzle_id": puzzle_id,
-            "rank": g.rank if g else "not played",
+            "rank": (g.rank or "played") if g else "not played",
             "words": len(found), "total_words": len(puzzle.answers),
             "pangrams": len(found & set(puzzle.pangrams)), "total_pangrams": len(puzzle.pangrams),
         })

@@ -318,3 +318,25 @@ def test_bad_cookies_never_show_their_values(cookies):
     with pytest.raises(ValueError) as info:
         NYTGamesClient(cookies=cookies)
     assert "SECRET" not in str(info.value)
+
+
+def test_older_game_state_shapes(session):
+    """Older saved games omit fields, and some Wordles use a rounds-based format."""
+    from nytgames.models import SpellingBeeLatest
+    from nytgames.models import WordlePuzzlesList
+
+    bee = SpellingBeeLatest(user_id=1, player={"user_id": 1}, states=[{
+        "game": "spelling_bee", "print_date": "", "puzzle_id": "5", "user_id": 1,
+        "game_data": {"answers": ["chin"], "isRevealed": False}}])
+    assert bee.states[0].game_data.rank is None and bee.states[0].print_date == ""
+
+    wordle = WordlePuzzlesList(user_id=1, states=[
+        {"game": "wordleV2", "puzzle_id": "1", "user_id": 1, "timestamp": 0,
+         "game_data": {"currentRoundIndex": 1, "puzzleComplete": True,
+                       "rounds": [{"complete": True, "timeMs": 52000}]}},
+        {"game": "wordleV2", "puzzle_id": "2", "user_id": 1, "timestamp": 0, "print_date": "",
+         "game_data": {"boardState": ["crane"], "currentRowIndex": 1, "status": "WIN", "setLegacyStats": True}},
+    ])
+    rounds, board = (s.game_data for s in wordle.states)
+    assert rounds.rounds_format and rounds.rounds[0].timeMs == 52000 and rounds.boardState == []
+    assert not board.rounds_format and board.status == "WIN"
