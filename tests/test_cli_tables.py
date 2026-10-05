@@ -14,6 +14,7 @@ from nytgames.cli import dates
 from nytgames.cli import output
 from nytgames.cli.state import State
 from nytgames.models import ArchivePuzzle
+from nytgames.models import ConnectionsLatest
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
 from nytgames.models import CrosswordPuzzlesList
@@ -21,6 +22,7 @@ from nytgames.models import LetterBoxedPuzzle
 from nytgames.models import Player
 from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
+from nytgames.models import StrandsLatest
 from nytgames.models import StrandsPuzzle
 from nytgames.models import WordlePuzzle
 from nytgames.models import WordlePuzzlesList
@@ -104,6 +106,13 @@ def client(monkeypatch):
         "timestamp": 0, "user_id": 1, "version": "1",
         "game_data": {"answers": ["chin", "blanchi"], "isRevealed": False, "rank": "Genius"}}],
         player={"user_id": 1})
+    fake.connections_latest.return_value = ConnectionsLatest(user_id=1, states=[{
+        "game": "connections", "print_date": TODAY, "puzzle_id": "1", "timestamp": 0, "user_id": 1,
+        "game_data": {"mistakes": 2, "puzzleComplete": True, "puzzleWon": True,
+                      "solvedCategories": [{}, {}, {}, {}], "isPlayingArchive": True}}])
+    fake.strands_latest.return_value = StrandsLatest(user_id=1, states=[{
+        "game": "strands", "print_date": TODAY, "puzzle_id": "1", "timestamp": 0, "user_id": 1,
+        "game_data": {"isSolved": True, "otherWordsFound": ["CAST"]}}])
     fake.crossword_puzzles.return_value = CrosswordPuzzlesList(status="OK", results=[{
         "author": "Ann Author", "editor": "Ed", "format_type": "Normal", "percent_filled": 100,
         "print_date": TODAY, "publish_type": "Daily", "puzzle_id": 1, "solved": True, "star": "Gold",
@@ -166,6 +175,8 @@ def test_today_table(client):
     (["history", "crossword", "midi"], ["Midi crosswords", "Ann Author"]),
     (["history", "wordle"], ["ADIEU SHACK", "win"]),
     (["history", "bee"], ["Genius", "2/3", "1/1"]),
+    (["history", "connections"], ["Connections", "won", "4/4", "archive"]),
+    (["history", "strands"], ["Strands", "solved"]),
 ])
 def test_history_tables(client, args, expected):
     rendered = table(*args)

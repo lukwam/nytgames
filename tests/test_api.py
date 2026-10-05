@@ -128,7 +128,8 @@ def test_crossword_daily_uses_v6_endpoint(nyt):
     )
 
 
-@pytest.mark.parametrize("path", ["/spelling-bee/latest", "/wordle/latest"])
+@pytest.mark.parametrize("path", ["/connections/latest", "/spelling-bee/latest", "/strands/latest",
+                                  "/wordle/latest"])
 def test_state_latests(nyt, path):
     """Game state endpoints accept the current response shape."""
     nyt.return_value = mock_response(STATE_LATESTS)
@@ -274,3 +275,29 @@ def test_crossword_puzzles_midi_is_a_bad_request(nyt):
     response = client.get("/crosswords/puzzles?publish_type=midi")
     assert response.status_code == 400
     nyt.assert_not_called()
+
+
+@pytest.mark.parametrize("game,game_data", [
+    ("connections", {"guesses": [{"cards": []}], "mistakes": 1, "puzzleComplete": True, "puzzleWon": True,
+                     "solvedCategories": [{"title": "A"}], "isPlayingArchive": False, "newField": 1}),
+    ("strands", {"history": [{"word": "HOOK"}], "isSolved": True, "otherWordsFound": ["CAST"],
+                 "isPlayingArchive": False, "newField": 1}),
+    ("connections", {}),
+    ("strands", {}),
+])
+def test_connections_and_strands_latest(nyt, game, game_data):
+    """Connections and Strands game states use the game state service and allow any game data."""
+    nyt.return_value = mock_response({
+        **STATE_LATESTS,
+        "badges_trophy_shelf": {},
+        "crossword_archive_streaks": {},
+        "states": [{"game": game, "game_data": game_data, "print_date": "", "puzzle_id": "1315",
+                    "schema_version": "0.1.0", "timestamp": 0, "user_id": 123, "version": "1"}],
+    })
+    response = client.get(f"/{game}/latest?puzzle_ids=1315,1314")
+    assert response.status_code == 200
+    state = response.json()["states"][0]
+    assert state["puzzle_id"] == "1315"
+    assert state["game_data"].get("newField") == game_data.get("newField")
+    assert nyt.call_args.args[0] == f"https://www.nytimes.com/svc/games/state/{game}/latests"
+    assert nyt.call_args.kwargs["params"] == {"puzzle_ids": "1315,1314"}

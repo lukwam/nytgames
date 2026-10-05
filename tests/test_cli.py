@@ -20,10 +20,12 @@ from nytgames.cli import app as cli_main
 from nytgames.cli import output
 from nytgames.cli.state import State
 from nytgames.models import ArchivePuzzle
+from nytgames.models import ConnectionsLatest
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
 from nytgames.models import CrosswordPuzzlesList
 from nytgames.models import Player
+from nytgames.models import StrandsLatest
 from nytgames.models import WordlePuzzle
 from nytgames.models import WordlePuzzlesList
 
@@ -266,6 +268,42 @@ def test_history_wordle_uses_the_archive(client):
     assert rows == [{"date": "2026-10-04", "puzzle_id": 1421, "status": "win", "guesses": 2,
                      "hard_mode": True, "board": ["adieu", "shack"]}]
     client.wordle.assert_not_called()
+
+
+def test_history_connections_uses_the_archive(client):
+    client.archive.return_value = [ArchivePuzzle(id=1315, print_date="2026-10-04"),
+                                   ArchivePuzzle(id=1314, print_date="2026-10-03"),
+                                   ArchivePuzzle(id=1313, print_date="2026-10-02")]
+    state = {"game": "connections", "print_date": "", "timestamp": 0, "user_id": 1}
+    client.connections_latest.return_value = ConnectionsLatest(user_id=1, states=[
+        {**state, "puzzle_id": "1315", "game_data": {"mistakes": 1, "puzzleComplete": True, "puzzleWon": True,
+                                                     "solvedCategories": [{}, {}, {}, {}]}},
+        {**state, "puzzle_id": "1314", "game_data": {"mistakes": 4, "puzzleComplete": True, "puzzleWon": False,
+                                                     "solvedCategories": [{}], "isPlayingArchive": True}},
+    ])
+
+    rows = json.loads(run("history", "connections", "--from", "2026-10-02", "-f", "json").stdout)
+
+    assert [(r["puzzle_id"], r["status"], r["mistakes"], r["categories_solved"], r["archive"]) for r in rows] == [
+        (1315, "won", 1, 4, None), (1314, "lost", 4, 1, True), (1313, "not played", None, 0, None)]
+    client.archive.assert_called_once_with("connections", "2026-10-02", "2026-10-04")
+    client.connections_latest.assert_called_once_with([1315, 1314, 1313])
+
+
+def test_history_strands_uses_the_archive(client):
+    client.archive.return_value = [ArchivePuzzle(id=1135, print_date="2026-10-04"),
+                                   ArchivePuzzle(id=1134, print_date="2026-10-03")]
+    client.strands_latest.return_value = StrandsLatest(user_id=1, states=[{
+        "game": "strands", "print_date": "2026-10-04", "puzzle_id": "1135", "timestamp": 0, "user_id": 1,
+        "game_data": {"isSolved": True, "otherWordsFound": ["CAST", "REEL"], "isPlayingArchive": False},
+    }])
+
+    rows = json.loads(run("history", "strands", "--from", "2026-10-03", "-f", "json").stdout)
+
+    assert rows == [
+        {"date": "2026-10-04", "puzzle_id": 1135, "status": "solved", "other_words": 2, "archive": False},
+        {"date": "2026-10-03", "puzzle_id": 1134, "status": "not played", "other_words": 0, "archive": None},
+    ]
 
 
 def test_cli_extra_message_when_typer_is_missing(monkeypatch):

@@ -43,6 +43,7 @@ from nytgames import formats
 from nytgames import spelling_bee_hints
 from nytgames.models import ArchiveGame
 from nytgames.models import ArchivePuzzle
+from nytgames.models import ConnectionsLatest
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
 from nytgames.models import CrosswordOracle
@@ -54,6 +55,7 @@ from nytgames.models import Player
 from nytgames.models import SpellingBeeGameData
 from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
+from nytgames.models import StrandsLatest
 from nytgames.models import StrandsPuzzle
 from nytgames.models import WordleBotAnalysis
 from nytgames.models import WordleBotSummary
@@ -158,6 +160,29 @@ def get_archive(
 
 
 # Connections
+@router.get(
+    "/connections/latest",
+    response_model=ConnectionsLatest,
+    summary="List latest Connections puzzles",
+    tags=["Connections"])
+def list_latest_connections_puzzles(
+    client: NYTGamesClient = Depends(get_client),
+    puzzle_ids: str = Query(None, examples=["1,2,3,4,5,6,7"]),
+) -> ConnectionsLatest:
+    """
+    **List latest Connections puzzles**
+
+    Returns the user's saved Connections games for the puzzle IDs in the url
+    parameters. Requires the `NYT-S` cookie.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/games/state/connections/latests
+    ```
+    """
+    return client.connections_latest(puzzle_ids)
+
+
 @router.get(
     "/connections/{date}",
     response_model=ConnectionsPuzzle,
@@ -636,6 +661,29 @@ def get_spelling_bee_puzzle_hints(
 
 
 # Strands
+@router.get(
+    "/strands/latest",
+    response_model=StrandsLatest,
+    summary="List latest Strands puzzles",
+    tags=["Strands"])
+def list_latest_strands_puzzles(
+    client: NYTGamesClient = Depends(get_client),
+    puzzle_ids: str = Query(None, examples=["1,2,3,4,5,6,7"]),
+) -> StrandsLatest:
+    """
+    **List latest Strands puzzles**
+
+    Returns the user's saved Strands games for the puzzle IDs in the url
+    parameters. Requires the `NYT-S` cookie.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/games/state/strands/latests
+    ```
+    """
+    return client.strands_latest(puzzle_ids)
+
+
 @router.get(
     "/strands/{date}",
     response_model=StrandsPuzzle,

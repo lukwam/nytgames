@@ -28,7 +28,7 @@ from nytgames import formats
 from nytgames import views
 from nytgames.cli.config import Config
 from nytgames.cli.dates import parse_date
-from nytgames.cli.dates import today as nyt_today
+from nytgames.cli import dates
 
 try:
     from mcp.server.mcpserver import MCPServer
@@ -227,11 +227,11 @@ def stats() -> dict[str, Any]:
 @tool()
 def today() -> list[dict[str, Any]]:
     """Get which of today's games the user has played: status and details such as solve times. Needs cookies."""
-    return views.today_rows(client(), nyt_today())
+    return views.today_rows(client(), dates.today())
 
 
 def window(date_start: str | None, date_end: str | None, game: str) -> tuple[datetime.date, datetime.date]:
-    last = day(date_end, game) if date_end else nyt_today()
+    last = day(date_end, game) if date_end else dates.today()
     first = day(date_start, game) if date_start else last - datetime.timedelta(days=29)
     if first > last:
         raise ToolError("date_start is after date_end")
@@ -276,7 +276,7 @@ def wordlebot() -> dict[str, Any]:
     then "you" is missing. For other days use wordlebot_summary.
     """
     nyt = client()
-    when = nyt_today()
+    when = dates.today()
     puzzle = nyt.wordle(when.isoformat())
     summary = nyt.wordlebot_summary(when.isoformat(), solution=puzzle.solution)
     return views.wordlebot_view(when, puzzle, summary, nyt.wordlebot(), answers=False)

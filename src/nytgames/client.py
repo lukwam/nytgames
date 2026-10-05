@@ -20,6 +20,7 @@ from nytgames.exceptions import NYTGamesParseError
 from nytgames.exceptions import NYTGamesRateLimitError
 from nytgames.models import ArchiveGame
 from nytgames.models import ArchivePuzzle
+from nytgames.models import ConnectionsLatest
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
 from nytgames.models import CrosswordOracle
@@ -32,6 +33,7 @@ from nytgames.models import SpellingBeeGameData
 from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
 from nytgames.models import SpellingBeePuzzle
+from nytgames.models import StrandsLatest
 from nytgames.models import StrandsPuzzle
 from nytgames.models import WordleBotAnalysis
 from nytgames.models import WordleBotSummary
@@ -267,6 +269,18 @@ class NYTGamesClient:
         """Return the Connections puzzle for a date (YYYY-MM-DD)."""
         return ConnectionsPuzzle(**self._get(f"/svc/connections/v2/{date}.json"))
 
+    def connections_latest(self, puzzle_ids: PuzzleIds = None) -> ConnectionsLatest:
+        """Return the user's latest Connections game states.
+
+        `puzzle_ids` is a puzzle ID, a comma separated string or a list of up
+        to 30 IDs. `states` only includes puzzles the user has played.
+        """
+        response = self._get(
+            "/svc/games/state/connections/latests",
+            params={"puzzle_ids": join_puzzle_ids(puzzle_ids)},
+        )
+        return ConnectionsLatest(**response)
+
     # Crosswords
     def crossword(
         self,
@@ -422,6 +436,18 @@ class NYTGamesClient:
     def strands(self, date: str) -> StrandsPuzzle:
         """Return the Strands puzzle for a date (YYYY-MM-DD)."""
         return StrandsPuzzle(**self._get(f"/svc/strands/v2/{date}.json"))
+
+    def strands_latest(self, puzzle_ids: PuzzleIds = None) -> StrandsLatest:
+        """Return the user's latest Strands game states.
+
+        `puzzle_ids` is a puzzle ID, a comma separated string or a list of up
+        to 30 IDs. `states` only includes puzzles the user has played.
+        """
+        response = self._get(
+            "/svc/games/state/strands/latests",
+            params={"puzzle_ids": join_puzzle_ids(puzzle_ids)},
+        )
+        return StrandsLatest(**response)
 
     # Wordle
     def wordlebot(self) -> WordleBotAnalysis | None:
