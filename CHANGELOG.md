@@ -4,6 +4,17 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.9.1
+
+### Fixed
+
+- `nytg archive crossword-*` saved only one puzzle on dates with two (such as
+  2022-12-31, where it kept the Supermega and skipped the daily). Crosswords
+  are now listed from the games archive and fetched by ID; dates with two
+  puzzles save each as `YYYY-MM-DD-ID`, and single-puzzle dates keep their
+  `YYYY-MM-DD` names, so existing archives resume as before. Future dates
+  are still fetched by date.
+
 ## 0.9.0
 
 ### Added

@@ -1,6 +1,7 @@
 """nytg archive: save puzzles as JSON files, one per date."""
 import datetime
 import enum
+import functools
 import hashlib
 import json
 import time
@@ -22,6 +23,7 @@ from nytgames import NYTGamesHTTPError
 from nytgames import NYTGamesNotFoundError
 from nytgames import formats
 from nytgames.cli.dates import date_range
+from nytgames.cli.dates import today as nyt_today
 from nytgames.cli.output import FormatOption
 from nytgames.cli.output import emit
 from nytgames.cli.output import err_console
@@ -41,18 +43,45 @@ class ArchiveGame(str, enum.Enum):
     crossword_midi = "crossword-midi"
 
 
-def fetcher(client: NYTGamesClient, game: ArchiveGame):
-    """Return a function that fetches the game's puzzle for a date."""
-    if game.value.startswith("crossword-"):
-        kind = game.value.split("-", 1)[1]
-        return lambda day: client.crossword(kind, day)
-    return {
-        ArchiveGame.wordle: client.wordle,
-        ArchiveGame.connections: client.connections,
-        ArchiveGame.strands: client.strands,
-        ArchiveGame.spelling_bee: client.spelling_bee_puzzle,
-        ArchiveGame.letter_boxed: client.letter_boxed,
-    }[game]
+def archive_items(client: NYTGamesClient, game: ArchiveGame, days: list) -> tuple[list, list]:
+    """Return the (date, file stem, fetch) items to archive, and dates known to have no puzzle.
+
+    Most games have one puzzle per date, fetched by date. Crosswords are listed
+    from the games archive and fetched by ID, because a few dates have two
+    (such as 2022-12-31's daily and its Supermega); those are saved as
+    YYYY-MM-DD-ID files. Future dates, which the archive doesn't list yet,
+    are fetched by date.
+    """
+    if not game.value.startswith("crossword-"):
+        fetch = {
+            ArchiveGame.wordle: client.wordle,
+            ArchiveGame.connections: client.connections,
+            ArchiveGame.strands: client.strands,
+            ArchiveGame.spelling_bee: client.spelling_bee_puzzle,
+            ArchiveGame.letter_boxed: client.letter_boxed,
+        }[game]
+        return [(d.isoformat(), d.isoformat(), functools.partial(fetch, d.isoformat())) for d in days], []
+
+    kind = game.value.split("-", 1)[1]
+    today = nyt_today()
+    listed_days = [d for d in days if d <= today]
+    by_date: dict[str, list] = {}
+    if listed_days:
+        for puzzle in client.archive(f"crossword_{kind}", listed_days[0].isoformat(), listed_days[-1].isoformat()):
+            by_date.setdefault(puzzle.print_date, []).append(puzzle.id)
+    items, missing = [], []
+    for d in days:
+        iso = d.isoformat()
+        if d > today:
+            items.append((iso, iso, functools.partial(client.crossword, kind, iso)))
+        elif iso not in by_date:
+            missing.append(iso)
+        else:
+            ids = by_date[iso]
+            for puzzle_id in ids:
+                stem = iso if len(ids) == 1 else f"{iso}-{puzzle_id}"
+                items.append((iso, stem, functools.partial(client.crossword_by_id, puzzle_id)))
+    return items, missing
 
 
 def archive(
@@ -87,17 +116,17 @@ def archive(
         raise typer.BadParameter("--from is after --to")
     directory = out / game.value
     directory.mkdir(parents=True, exist_ok=True)
-    fetch = fetcher(state.client(), game)
     days = list(date_range(first, last))
+    items, missing = archive_items(state.client(), game, days)
     result: dict[str, Optional[object]] = {"game": game.value, "directory": str(directory),
                                            "format": file_format, "saved": 0, "skipped": 0,
-                                           "updated": [], "missing": [], "unsupported": [],
+                                           "updated": [], "missing": missing, "unsupported": [],
                                            "errors": []}
     manifest_path = directory / "manifest.json"
     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {"files": {}}
     columns = (TextColumn("{task.description}"), BarColumn(), MofNCompleteColumn(), TimeRemainingColumn())
     try:
-        archive_days(days, directory, file_format, overwrite, delay, fetch, manifest, result,
+        archive_days(items, directory, file_format, overwrite, delay, manifest, result,
                      Progress(*columns, console=err_console, transient=True), game)
     finally:
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
@@ -120,25 +149,25 @@ def archive(
         raise typer.Exit(1)
 
 
-def archive_days(days, directory: Path, file_format: str, overwrite: bool, delay: float, fetch,
+def archive_days(items, directory: Path, file_format: str, overwrite: bool, delay: float,
                  manifest: dict, result: dict, progress_bar: Progress, game: ArchiveGame) -> None:
-    """Fetch and save each day, updating the manifest and result."""
+    """Fetch and save each item, updating the manifest and result."""
     with progress_bar as progress:
-        task = progress.add_task(f"Archiving {game.value}", total=len(days))
-        for day in days:
-            path = directory / f"{day}.{file_format}"
+        task = progress.add_task(f"Archiving {game.value}", total=len(items))
+        for day, stem, fetch in items:
+            path = directory / f"{stem}.{file_format}"
             if path.exists() and not overwrite:
                 result["skipped"] += 1
                 progress.advance(task)
                 continue
             try:
-                puzzle = fetch(day.isoformat())
+                puzzle = fetch()
             except NYTGamesAuthenticationError:
                 raise
             except NYTGamesNotFoundError:
-                result["missing"].append(day.isoformat())
+                result["missing"].append(day)
             except NYTGamesHTTPError as err:
-                result["errors"].append({"date": day.isoformat(), "error": str(err)})
+                result["errors"].append({"date": day, "error": str(err)})
             else:
                 if file_format == "json":
                     content = (json.dumps(puzzle.model_dump(mode="json", by_alias=True),
@@ -147,10 +176,10 @@ def archive_days(days, directory: Path, file_format: str, overwrite: bool, delay
                     try:
                         content = formats.export(puzzle, file_format)
                     except formats.NYTGamesExportError as err:
-                        result["unsupported"].append({"date": day.isoformat(), "reasons": err.reasons})
+                        result["unsupported"].append({"date": stem, "reasons": err.reasons})
                         content = None
                 if content is not None:
-                    save(path, content, day.isoformat(), puzzle, manifest, result)
+                    save(path, content, day, puzzle, manifest, result)
             progress.advance(task)
             if delay:
                 time.sleep(delay)
