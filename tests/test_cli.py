@@ -341,3 +341,16 @@ def test_malformed_cookie_export_is_redacted(monkeypatch, capsys):
         cli_main.main()
     err = capsys.readouterr().err
     assert secret not in err and "couldn't be read as JSON" in err
+
+
+def test_history_handles_older_game_shapes(client):
+    """Rounds-based Wordles and Spelling Bees without a rank still show up."""
+    from nytgames.models import ArchivePuzzle
+    from nytgames.models import WordlePuzzlesList
+
+    client.archive.return_value = [ArchivePuzzle(id=1, print_date="2022-01-01")]
+    client.wordle_latest.return_value = WordlePuzzlesList(user_id=1, states=[{
+        "game": "wordleV2", "puzzle_id": "1", "user_id": 1,
+        "game_data": {"puzzleComplete": True, "rounds": [{"complete": True}]}}])
+    rows = json.loads(run("history", "wordle", "--from", "2022-01-01", "--to", "2022-01-01", "-f", "json").stdout)
+    assert rows[0]["status"] == "played" and rows[0]["board"] == []

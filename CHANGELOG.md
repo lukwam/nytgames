@@ -4,6 +4,20 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.8.4
+
+### Fixed
+
+- Saved game states from older games failed validation, failing whole
+  batches in `spelling_bee_latest()` and `wordle_latest()`: Spelling Bee
+  games without a `rank`, and Wordle games in a rounds-based format
+  (`rounds`, `currentRoundIndex`, `puzzleComplete`, no guesses). These fields
+  are now optional, the rounds-based fields are typed, and
+  `WordleGameData.rounds_format` tells the formats apart. `print_date` (often
+  empty on older games) and `timestamp` are optional too. Found by
+  nyt-puzzles.
+- `nytg today` and `nytg history` show these games as "played".
+
 ## 0.8.3
 
 ### Security
