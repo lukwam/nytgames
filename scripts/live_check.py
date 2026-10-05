@@ -142,7 +142,17 @@ def user_checks(client: NYTGamesClient) -> list[tuple[str, Callable[[], str]]]:
         analysis = client.wordlebot()  # None until WordleBot is opened today
         return "today's analysis" if analysis else "no analysis yet today"
 
-    return [("Player stats", stats), ("WordleBot", wordlebot)]
+    def game_states(game: str, latest: Callable) -> Callable[[], str]:
+        def check() -> str:
+            last = datetime.datetime.now(NYT_TIMEZONE).date()
+            first = last - datetime.timedelta(days=29)
+            ids = [p.id for p in client.archive(game, first.isoformat(), last.isoformat())]
+            return f"{len(latest(ids).states)} of {len(ids)} recent games played"
+        return check
+
+    return [("Player stats", stats), ("WordleBot", wordlebot),
+            ("Connections states", game_states("connections", client.connections_latest)),
+            ("Strands states", game_states("strands", client.strands_latest))]
 
 
 def run(name: str, check: Callable[[], str]) -> dict:

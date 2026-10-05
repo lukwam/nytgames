@@ -13,7 +13,7 @@ from rich.text import Text
 from nytgames import views
 from nytgames.views import percent
 from nytgames.cli.dates import format_seconds
-from nytgames.cli.dates import today as nyt_today
+from nytgames.cli import dates
 from nytgames.cli.output import FormatOption
 from nytgames.cli.output import emit
 from nytgames.cli.output import err_console
@@ -36,6 +36,8 @@ def register(app: typer.Typer) -> None:
     history = typer.Typer(help="Your results for a range of dates.", no_args_is_help=True)
     history.command("crossword")(history_crossword)
     history.command("wordle")(history_wordle)
+    history.command("connections")(history_connections)
+    history.command("strands")(history_strands)
     history.command("bee")(history_bee)
     app.add_typer(history, name="history")
 
@@ -182,8 +184,8 @@ def crossword_table(data):
 
 def today(fmt: FormatOption = None) -> None:
     """Show which of today's games you've played."""
-    day = nyt_today().isoformat()
-    rows = views.today_rows(state.client(), nyt_today())
+    day = dates.today().isoformat()
+    rows = views.today_rows(state.client(), dates.today())
 
     def table(data):
         done = {"win", "solved", "played", "queen bee", "genius"}
@@ -203,7 +205,7 @@ def today(fmt: FormatOption = None) -> None:
 
 
 def date_window(start: str | None, end: str | None, game: str) -> tuple[datetime.date, datetime.date]:
-    last = date_arg(end, game) if end else nyt_today()
+    last = date_arg(end, game) if end else dates.today()
     first = date_arg(start, game) if start else last - datetime.timedelta(days=29)
     if first > last:
         raise typer.BadParameter("--from is after --to")
@@ -278,6 +280,46 @@ def history_wordle(start: FromOption = None, end: ToOption = None, fmt: FormatOp
     emit(rows, fmt, table)
 
 
+def history_connections(start: FromOption = None, end: ToOption = None, fmt: FormatOption = None) -> None:
+    """Your Connections results: won or lost, and mistakes."""
+    first, last = date_window(start, end, "connections")
+    rows = views.connections_results(state.client(), first, last)
+
+    def table(data):
+        t = Table(title=f"Connections {first} to {last}", title_justify="left", header_style="bold")
+        for column in ("Date", "Result", "Mistakes", "Groups", ""):
+            t.add_column(column)
+        for row in data:
+            style = {"won": "green", "lost": "red"}.get(row["status"], "dim")
+            played = row["status"] != "not played"
+            t.add_row(row["date"], Text(row["status"], style=style),
+                      str(row["mistakes"]) if played and row["mistakes"] is not None else "",
+                      f"{row['categories_solved']}/4" if played else "",
+                      Text("archive", style="dim") if row["archive"] else "")
+        yield t
+
+    emit(rows, fmt, table)
+
+
+def history_strands(start: FromOption = None, end: ToOption = None, fmt: FormatOption = None) -> None:
+    """Your Strands results: solved, and other words found."""
+    first, last = date_window(start, end, "strands")
+    rows = views.strands_results(state.client(), first, last)
+
+    def table(data):
+        t = Table(title=f"Strands {first} to {last}", title_justify="left", header_style="bold")
+        for column in ("Date", "Result", "Other words", ""):
+            t.add_column(column)
+        for row in data:
+            style = {"solved": "green"}.get(row["status"], "dim")
+            t.add_row(row["date"], Text(row["status"], style=style),
+                      str(row["other_words"]) if row["status"] != "not played" else "",
+                      Text("archive", style="dim") if row["archive"] else "")
+        yield t
+
+    emit(rows, fmt, table)
+
+
 def history_bee(start: FromOption = None, end: ToOption = None, fmt: FormatOption = None) -> None:
     """Your Spelling Bee results: rank and words found."""
     first, last = date_window(start, end, "spelling-bee")
@@ -310,7 +352,7 @@ def wordlebot(
     puzzle = client.wordle(day.isoformat())
     summary = client.wordlebot_summary(day.isoformat(), solution=puzzle.solution)
 
-    mine = client.wordlebot() if day == nyt_today() and state.resolve_cookies()[0] else None
+    mine = client.wordlebot() if day == dates.today() and state.resolve_cookies()[0] else None
     data = views.wordlebot_view(day, puzzle, summary, mine, answers)
 
     def table(data):
@@ -350,7 +392,7 @@ def wordlebot(
                                score(you["skill_by_round"][i]) if i < len(you["skill_by_round"]) else "",
                                score(you["luck_by_round"][i]) if i < len(you["luck_by_round"]) else "")
             yield rounds
-        elif data["date"] == nyt_today().isoformat():
+        elif data["date"] == dates.today().isoformat():
             yield Text("Your own analysis appears after you play and open WordleBot "
                        "(and needs your cookies).", style="dim")
         if "bot_paths" in data:

@@ -59,6 +59,39 @@ class ConnectionsPuzzle(NYTModel):
         return [cards[i:i + 4] for i in range(0, len(cards), 4)]
 
 
+class ConnectionsGameData(NYTModel):
+    """Connections Game Data (the user's saved progress).
+
+    Older games vary in shape, so every field is optional.
+    """
+    guesses: List[Any] = []
+    mistakes: int | None = None
+    puzzleComplete: bool | None = None
+    puzzleWon: bool | None = None
+    solvedCategories: List[Any] = []
+    isPlayingArchive: bool | None = None
+
+
+class ConnectionsGameState(NYTModel):
+    """Connections Game State."""
+    game: str
+    game_data: ConnectionsGameData
+    # Often empty on older games; use puzzle_id instead.
+    print_date: str = ""
+    puzzle_id: str
+    schema_version: str | None = None
+    timestamp: int | None = None
+    user_id: int
+    version: str | None = None
+
+
+class ConnectionsLatest(NYTModel):
+    """Connections Game States."""
+    player: "Player | None" = None
+    states: List[ConnectionsGameState]
+    user_id: int
+
+
 class CrosswordGameData(NYTModel):
     """Crossword Game Data (the user's saved progress)."""
     cells: dict
@@ -548,6 +581,37 @@ class StrandsPuzzle(NYTModel):
         return strands_words(self)
 
 
+class StrandsGameData(NYTModel):
+    """Strands Game Data (the user's saved progress).
+
+    Older games vary in shape, so every field is optional.
+    """
+    history: List[Any] = []
+    isSolved: bool | None = None
+    otherWordsFound: List[str] = []
+    isPlayingArchive: bool | None = None
+
+
+class StrandsGameState(NYTModel):
+    """Strands Game State."""
+    game: str
+    game_data: StrandsGameData
+    # Often empty on older games; use puzzle_id instead.
+    print_date: str = ""
+    puzzle_id: str
+    schema_version: str | None = None
+    timestamp: int | None = None
+    user_id: int
+    version: str | None = None
+
+
+class StrandsLatest(NYTModel):
+    """Strands Game States."""
+    player: Player | None = None
+    states: List[StrandsGameState]
+    user_id: int
+
+
 class WordlePuzzle(NYTModel):
     """Wordle Puzzle."""
     id: int
@@ -606,6 +670,7 @@ class WordlePuzzlesList(NYTModel):
 
 
 CrosswordGame.model_rebuild()
+ConnectionsLatest.model_rebuild()
 
 
 class WordleBotAnalysis(NYTModel):

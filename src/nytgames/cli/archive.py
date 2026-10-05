@@ -23,7 +23,7 @@ from nytgames import NYTGamesHTTPError
 from nytgames import NYTGamesNotFoundError
 from nytgames import formats
 from nytgames.cli.dates import date_range
-from nytgames.cli.dates import today as nyt_today
+from nytgames.cli import dates
 from nytgames.cli.output import FormatOption
 from nytgames.cli.output import emit
 from nytgames.cli.output import err_console
@@ -63,7 +63,7 @@ def archive_items(client: NYTGamesClient, game: ArchiveGame, days: list) -> tupl
         return [(d.isoformat(), d.isoformat(), functools.partial(fetch, d.isoformat())) for d in days], []
 
     kind = game.value.split("-", 1)[1]
-    today = nyt_today()
+    today = dates.today()
     listed_days = [d for d in days if d <= today]
     by_date: dict[str, list] = {}
     if listed_days:

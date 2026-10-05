@@ -285,6 +285,52 @@ def wordle_results(client, first: datetime.date, last: datetime.date) -> list[di
     return rows
 
 
+def connections_status(game) -> str:
+    """A Connections game's status: won, lost or in progress."""
+    if game.puzzleWon:
+        return "won"
+    return "lost" if game.puzzleComplete else "in progress"
+
+
+def connections_results(client, first: datetime.date, last: datetime.date) -> list[dict]:
+    """Return the user's Connections results for a date range."""
+    ids = {p.id: p.print_date for p in client.archive("connections", first.isoformat(), last.isoformat())}
+    states = {}
+    for batch in chunks(list(ids), STATE_BATCH):
+        for game in client.connections_latest(batch).states:
+            states[int(game.puzzle_id)] = game.game_data
+    rows = []
+    for puzzle_id, day in ids.items():
+        g = states.get(puzzle_id)
+        rows.append({
+            "date": day, "puzzle_id": puzzle_id,
+            "status": connections_status(g) if g else "not played",
+            "mistakes": g.mistakes if g else None,
+            "categories_solved": len(g.solvedCategories) if g else 0,
+            "archive": g.isPlayingArchive if g else None,
+        })
+    return rows
+
+
+def strands_results(client, first: datetime.date, last: datetime.date) -> list[dict]:
+    """Return the user's Strands results for a date range."""
+    ids = {p.id: p.print_date for p in client.archive("strands", first.isoformat(), last.isoformat())}
+    states = {}
+    for batch in chunks(list(ids), STATE_BATCH):
+        for game in client.strands_latest(batch).states:
+            states[int(game.puzzle_id)] = game.game_data
+    rows = []
+    for puzzle_id, day in ids.items():
+        g = states.get(puzzle_id)
+        rows.append({
+            "date": day, "puzzle_id": puzzle_id,
+            "status": ("solved" if g.isSolved else "in progress") if g else "not played",
+            "other_words": len(g.otherWordsFound) if g else 0,
+            "archive": g.isPlayingArchive if g else None,
+        })
+    return rows
+
+
 def bee_results(client, first: datetime.date, last: datetime.date,
                 progress: Progress = no_progress) -> list[dict]:
     """Return the user's Spelling Bee results for a date range."""

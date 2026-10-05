@@ -80,6 +80,8 @@ Puzzles don't need cookies. Everything about you does.
 | Crossword progress | `crossword_game(puzzle_ids, publish_type)` | Your filled squares, time, gold star, revealed and checked squares (up to 30 puzzles per call) |
 | Crossword list | `crossword_puzzles(publish_type, date_start=..., date_end=...)` | Daily, Mini and Bonus puzzles with your solved status and star (90 days or less per call) |
 | Wordle progress | `wordle_latest(puzzle_ids)` | Your guesses and result |
+| Connections progress | `connections_latest(puzzle_ids)` | Your guesses, mistakes and solved groups, and whether you won (up to 30 puzzles per call) |
+| Strands progress | `strands_latest(puzzle_ids)` | Your found words, other words and whether you solved it (up to 30 puzzles per call) |
 | WordleBot | `wordlebot()` | Your luck and skill for today's Wordle, overall and by round (today only, after you've opened WordleBot) |
 | Spelling Bee progress | `spelling_bee_latest(puzzle_ids)` | Words you found and your rank (up to 30 puzzles per call) |
 
@@ -335,6 +337,8 @@ nytg today                       # which of today's games you've played
 nytg wordlebot                   # your WordleBot luck and skill vs. everyone (any date for everyone)
 nytg history crossword --from 2026-01-01 -f csv > solves.csv
 nytg history wordle --from monday
+nytg history connections         # won or lost, mistakes and groups found
+nytg history strands
 nytg history bee
 ```
 
@@ -511,6 +515,7 @@ running your own instance in a container.
 | Route | NYT endpoint |
 |---|---|
 | `GET /archive/{game}/{date_start}/{date_end}` | `svc/games/v1/archive/{game}/{date_start}/{date_end}` |
+| `GET /connections/latest` | `svc/games/state/connections/latests` |
 | `GET /connections/{date}` | `svc/connections/v2/{date}.json` |
 | `GET /crosswords/daily/today` | `svc/crosswords/v6/puzzle/daily.json` |
 | `GET /crosswords/daily/{date}` | `svc/crosswords/v6/puzzle/daily/{date}.json` |
@@ -530,6 +535,7 @@ running your own instance in a container.
 | `GET /spelling-bee/latest` | `svc/games/state/spelling_bee/latests` |
 | `GET /spelling-bee/{date}` | `svc/spelling-bee/v1/{date}.json` |
 | `GET /spelling-bee/{date}/hints` | Computed from the puzzle above |
+| `GET /strands/latest` | `svc/games/state/strands/latests` |
 | `GET /strands/{date}` | `svc/strands/v2/{date}.json` |
 | `GET /wordlebot` | `svc/int/run/cubby/public-api/v1/responses/wordlebot/reader` (today, needs cookies) |
 | `GET /wordlebot/{date}/summary` | `static01.nyt.com/newsgraphics/2022/wordlebot/{solution}-{date}/summary.json` |

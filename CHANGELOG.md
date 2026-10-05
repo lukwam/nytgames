@@ -4,6 +4,20 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.9.2
+
+### Added
+
+- `connections_latest(puzzle_ids)` and `strands_latest(puzzle_ids)`: your
+  saved Connections and Strands games, shaped like `wordle_latest()` (up to
+  30 puzzle IDs per call; `states` only includes games you've played). Game
+  data is lenient, since older games vary: every field is optional and extra
+  fields are kept. `isPlayingArchive` tells games played from the archive
+  apart. Requested by nyt-puzzles.
+- `nytg history connections` (won or lost, mistakes, groups found) and
+  `nytg history strands` (solved, other words found).
+- `GET /connections/latest` and `GET /strands/latest` in the API.
+
 ## 0.9.1
 
 ### Fixed
