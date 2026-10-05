@@ -67,6 +67,7 @@ GAME = CrosswordGame(user_id=1, states=[{
 
 
 def puzzle(**changes) -> CrosswordPuzzle:
+    """Return the made-up puzzle, with dotted-path changes such as body.0.cells.0.label."""
     data = copy.deepcopy(PUZZLE)
     for path, value in changes.items():
         target = data

@@ -354,3 +354,40 @@ def test_history_handles_older_game_shapes(client):
         "game_data": {"puzzleComplete": True, "rounds": [{"complete": True}]}}])
     rows = json.loads(run("history", "wordle", "--from", "2022-01-01", "--to", "2022-01-01", "-f", "json").stdout)
     assert rows[0]["status"] == "played" and rows[0]["board"] == []
+
+
+def test_archive_crosswords_keeps_both_puzzles_on_a_date(client, tmp_path):
+    """Crosswords are listed from the archive and fetched by ID; two-puzzle dates get ID file names."""
+    from nytgames.models import ArchivePuzzle
+    from tests.test_formats import puzzle as crossword_puzzle
+
+    client.archive.return_value = [
+        ArchivePuzzle(id=20761, print_date="2022-12-30"),
+        ArchivePuzzle(id=20410, print_date="2022-12-31"),
+        ArchivePuzzle(id=20759, print_date="2022-12-31"),
+    ]
+    client.crossword_by_id.side_effect = lambda puzzle_id: crossword_puzzle(id=puzzle_id)
+    out = tmp_path / "archive"
+
+    result = json.loads(run("archive", "crossword-daily", "--from", "2022-12-29", "--to", "2022-12-31",
+                            "-o", str(out), "--delay", "0", "-f", "json").stdout)
+
+    files = sorted(p.name for p in (out / "crossword-daily").glob("*.json") if p.name != "manifest.json")
+    assert files == ["2022-12-30.json", "2022-12-31-20410.json", "2022-12-31-20759.json"]
+    assert json.loads((out / "crossword-daily" / "2022-12-31-20759.json").read_text())["id"] == 20759
+    assert (result["saved"], result["missing"]) == (3, ["2022-12-29"])
+    client.archive.assert_called_once_with("crossword_daily", "2022-12-29", "2022-12-31")
+    client.crossword.assert_not_called()
+
+
+def test_archive_future_crosswords_are_fetched_by_date(client, tmp_path):
+    """Tomorrow's crossword isn't in the archive yet, so it's fetched by date."""
+    from tests.test_formats import puzzle as crossword_puzzle
+
+    client.archive.return_value = []
+    client.crossword.return_value = crossword_puzzle()
+    result = json.loads(run("archive", "crossword-mini", "--from", "tomorrow", "--to", "tomorrow",
+                            "-o", str(tmp_path), "--delay", "0", "-f", "json").stdout)
+    assert result["saved"] == 1
+    client.crossword.assert_called_once_with("mini", "2026-10-05")
+    client.archive.assert_not_called()
