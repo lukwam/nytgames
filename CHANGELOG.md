@@ -4,6 +4,21 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.9.0
+
+### Added
+
+- `nytg-mcp`, a local MCP server for AI agents, behind the `mcp` extra
+  (`pip install "nytimes-games[mcp]"`): 15 tools for puzzles (with crossword
+  entries and crossings), WordleBot, the puzzle archive, your stats, today's
+  games and histories, and crossword export. Answers are hidden unless
+  `include_answers` is set; cookies come from `NYT_COOKIES` or your nytg
+  profile and are never returned or logged; every tool is read-only except
+  `export_crossword`.
+- `nytgames.views`: the plain data behind nytg's commands (puzzle views with
+  answers hidden, today, histories, WordleBot comparisons), shared by nytg and
+  the MCP server.
+
 ## 0.8.4
 
 ### Fixed

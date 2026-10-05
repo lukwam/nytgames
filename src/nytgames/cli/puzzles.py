@@ -2,7 +2,6 @@
 
 Answers are hidden unless --answers is given, in every output format.
 """
-import datetime
 import enum
 from pathlib import Path
 from typing import Annotated
@@ -13,8 +12,8 @@ from rich.columns import Columns
 from rich.table import Table
 from rich.text import Text
 
-from nytgames import spelling_bee_hints
 from nytgames import formats
+from nytgames import views
 from nytgames.cli.output import console
 from nytgames.cli.output import FormatOption
 from nytgames.cli.output import emit
@@ -52,15 +51,7 @@ def register(app: typer.Typer) -> None:
 
 def wordle(date: DateArgument = "today", answers: AnswersOption = False, fmt: FormatOption = None) -> None:
     """Show a Wordle puzzle."""
-    puzzle = state.client().wordle(date_arg(date).isoformat())
-    data = {
-        "date": puzzle.print_date,
-        "number": puzzle.days_since_launch,
-        "id": puzzle.id,
-        "editor": puzzle.editor,
-    }
-    if answers:
-        data["solution"] = puzzle.solution
+    data = views.wordle_view(state.client().wordle(date_arg(date).isoformat()), answers)
 
     def table(data):
         yield key_value_table({k: v for k, v in data.items() if k != "solution"},
@@ -74,21 +65,7 @@ def wordle(date: DateArgument = "today", answers: AnswersOption = False, fmt: Fo
 
 def connections(date: DateArgument = "today", answers: AnswersOption = False, fmt: FormatOption = None) -> None:
     """Show a Connections puzzle: the board, or the groups with --answers."""
-    puzzle = state.client().connections(date_arg(date).isoformat())
-    cards = sorted((card for category in puzzle.categories for card in category.cards),
-                   key=lambda card: card.position)
-    words = [card.text for card in cards]
-    data = {
-        "date": puzzle.print_date,
-        "id": puzzle.id,
-        "editor": puzzle.editor,
-        "board": [words[i:i + 4] for i in range(0, len(words), 4)],
-    }
-    if answers:
-        data["categories"] = [
-            {"title": category.title, "cards": [card.text for card in category.cards]}
-            for category in puzzle.categories
-        ]
+    data = views.connections_view(state.client().connections(date_arg(date).isoformat()), answers)
 
     def table(data):
         yield Text(f"Connections {data['date']}", style="bold")
@@ -108,19 +85,7 @@ def connections(date: DateArgument = "today", answers: AnswersOption = False, fm
 
 def strands(date: DateArgument = "today", answers: AnswersOption = False, fmt: FormatOption = None) -> None:
     """Show a Strands puzzle: the theme and board, and the words with --answers."""
-    puzzle = state.client().strands(date_arg(date).isoformat())
-    data = {
-        "date": puzzle.printDate,
-        "id": puzzle.id,
-        "clue": puzzle.clue,
-        "editor": puzzle.editor,
-        "board": puzzle.startingBoard,
-    }
-    if answers:
-        data["spangram"] = puzzle.spangram
-        data["theme_words"] = puzzle.themeWords or list(puzzle.themeCoords)
-        data["spangram_coords"] = puzzle.spangramCoords or []
-        data["theme_coords"] = puzzle.themeCoords
+    data = views.strands_view(state.client().strands(date_arg(date).isoformat()), answers)
 
     def table(data):
         styles = {}
@@ -155,22 +120,7 @@ def bee(
 ) -> None:
     """Show a Spelling Bee puzzle, with hints or answers."""
     puzzle = state.client().spelling_bee_puzzle(date_arg(date, "spelling-bee").isoformat())
-    puzzle_hints = spelling_bee_hints(puzzle)
-    data = {
-        "date": puzzle.printDate,
-        "id": puzzle.id,
-        "editor": puzzle.editor,
-        "center_letter": puzzle.centerLetter,
-        "outer_letters": puzzle.outerLetters,
-        "words": puzzle_hints["words"],
-        "points": puzzle_hints["points"],
-        "pangrams": puzzle_hints["pangrams"],
-    }
-    if hints:
-        data["hints"] = puzzle_hints
-    if answers:
-        data["answers"] = puzzle.answers
-        data["pangram_words"] = puzzle.pangrams
+    data = views.bee_view(puzzle, answers, hints)
 
     def table(data):
         letters = Text()
@@ -206,17 +156,7 @@ def bee(
 
 def letter_boxed(date: DateArgument = "today", answers: AnswersOption = False, fmt: FormatOption = None) -> None:
     """Show a Letter Boxed puzzle."""
-    puzzle = state.client().letter_boxed(date_arg(date, "letter-boxed").isoformat())
-    data = {
-        "date": puzzle.printDate,
-        "id": puzzle.id,
-        "editor": puzzle.editor,
-        "sides": puzzle.sides,
-        "par": puzzle.par,
-    }
-    if answers:
-        data["solution"] = puzzle.ourSolution
-        data["dictionary"] = puzzle.dictionary
+    data = views.letter_boxed_view(state.client().letter_boxed(date_arg(date, "letter-boxed").isoformat()), answers)
 
     def table(data):
         top, right, bottom, left = (list(side) for side in data["sides"])
@@ -238,17 +178,6 @@ def letter_boxed(date: DateArgument = "today", answers: AnswersOption = False, f
     emit(data, fmt, table)
 
 
-TITLES = {"daily": "New York Times Crossword", "mini": "NYT Mini Crossword",
-          "midi": "NYT Midi Crossword", "bonus": "NYT Bonus Crossword"}
-
-
-def export_title(puzzle, kind: str) -> str:
-    """The title for an exported crossword file."""
-    date = datetime.date.fromisoformat(puzzle.publicationDate)
-    title = f"{TITLES[kind]}, {date:%B} {date.day}, {date.year}"
-    return f"{title}: {puzzle.title}" if puzzle.title else title
-
-
 def save_crossword(client, puzzle, kind: str, path: Path, progress: bool) -> None:
     """Save a crossword in the format matching the file extension."""
     fmt = path.suffix.lower().lstrip(".")
@@ -257,7 +186,7 @@ def save_crossword(client, puzzle, kind: str, path: Path, progress: bool) -> Non
                                  param_hint="'--save'")
     game = client.crossword_game(puzzle.id, kind) if progress else None
     try:
-        data = formats.export(puzzle, fmt, game, title=export_title(puzzle, kind))
+        data = formats.export(puzzle, fmt, game, title=views.export_title(puzzle, kind))
     except formats.NYTGamesExportError as err:
         console.print(f"[red]Can't save this puzzle as .{fmt}:[/red] " + "; ".join(err.reasons))
         raise typer.Exit(1) from None
@@ -307,41 +236,7 @@ def crossword(
     body = puzzle.body[0]
     width = body.dimensions["width"]
     cells = body.cells
-
-    def cell_text(cell):
-        if not cell.type:
-            return "#"
-        if answers:
-            return cell.answer or ""
-        return "."
-
-    grid = ["".join(cell_text(c)[:1] or "." for c in cells[r * width:(r + 1) * width])
-            for r in range(len(cells) // width)]
-    clue_lists = {}
-    for clue_list in body.clueLists:
-        entries = []
-        for index in clue_list.clues:
-            clue = body.clues[index]
-            entry = {"label": clue.label, "clue": "".join(t.get("plain", "") for t in clue.text)}
-            if answers:
-                # Some clues that turn corners repeat the corner square.
-                squares = [i for n, i in enumerate(clue.cells) if n == 0 or i != clue.cells[n - 1]]
-                entry["answer"] = "".join(cells[i].answer or "" for i in squares)
-            entries.append(entry)
-        clue_lists[clue_list.name.lower()] = entries
-
-    data = {
-        "date": puzzle.publicationDate,
-        "type": kind,
-        "id": puzzle.id,
-        "title": getattr(puzzle, "title", None) or (puzzle.model_extra or {}).get("title"),
-        "constructors": puzzle.constructors,
-        "editor": puzzle.editor,
-        "size": f"{width}x{len(grid)}",
-        "grid": grid,
-    }
-    if clues:
-        data["clues"] = clue_lists
+    data = views.crossword_view(puzzle, kind, answers, clues)
 
     def table(data):
         heading = f"{kind.title()} crossword {data['date']}"

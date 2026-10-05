@@ -2,9 +2,7 @@
 import datetime
 import enum
 from collections.abc import Iterable
-from collections.abc import Iterator
 from typing import Annotated
-from typing import Any
 from typing import Optional
 
 import typer
@@ -12,8 +10,8 @@ from rich.progress import Progress
 from rich.table import Table
 from rich.text import Text
 
-from nytgames import NYTGamesNotFoundError
-from nytgames.cli.dates import date_range
+from nytgames import views
+from nytgames.views import percent
 from nytgames.cli.dates import format_seconds
 from nytgames.cli.dates import today as nyt_today
 from nytgames.cli.output import FormatOption
@@ -23,11 +21,6 @@ from nytgames.cli.output import key_value_table
 from nytgames.cli.state import date_arg
 from nytgames.cli.state import state
 
-
-# NYT returns game states for at most 30 puzzle IDs per request.
-STATE_BATCH = 30
-# NYT's crossword list returns at most 100 puzzles per request.
-LIST_DAYS = 90
 
 FromOption = Annotated[
     Optional[str], typer.Option("--from", help='First date, or "first" (default: 30 days ago).')
@@ -47,17 +40,8 @@ def register(app: typer.Typer) -> None:
     app.add_typer(history, name="history")
 
 
-def chunks(items: list, size: int) -> Iterator[list]:
-    for i in range(0, len(items), size):
-        yield items[i:i + size]
-
-
 def bar(value: int, maximum: int, width: int = 30) -> str:
     return "█" * max(1 if value else 0, round(width * value / maximum)) if maximum else ""
-
-
-def percent(part: int | None, whole: int | None) -> float | None:
-    return round(100 * part / whole, 1) if part is not None and whole else None
 
 
 class Game(str, enum.Enum):
@@ -69,45 +53,6 @@ class Game(str, enum.Enum):
     crossword = "crossword"
 
 
-def wordle_status(game) -> str:
-    """A Wordle game's status, such as "win", for either saved game format."""
-    if game.status:
-        return game.status.lower().replace("_", " ")
-    return "played" if game.puzzleComplete else "in progress"
-
-
-def summary_rows(stats) -> list[dict[str, Any]]:
-    """One row per game: played, won, win rate and streaks."""
-    rows = []
-    if stats.wordle and stats.wordle.totalStats:
-        total, calc = stats.wordle.totalStats, stats.wordle.calculatedStats
-        rows.append({"game": "Wordle", "played": total.gamesPlayed, "won": total.gamesWon,
-                     "current_streak": calc.currentStreak if calc else None,
-                     "max_streak": calc.maxStreak if calc else None})
-    if stats.connections:
-        s = stats.connections
-        rows.append({"game": "Connections", "played": s.puzzles_completed, "won": s.puzzles_won,
-                     "current_streak": s.current_streak, "max_streak": s.max_streak})
-    if stats.strands:
-        s = stats.strands
-        rows.append({"game": "Strands", "played": s.puzzles_started, "won": s.puzzles_completed,
-                     "current_streak": s.current_streak, "max_streak": s.max_streak})
-    if stats.spelling_bee:
-        s = stats.spelling_bee
-        rows.append({"game": "Spelling Bee", "played": s.puzzles_started, "won": s.ranks.Queen_Bee,
-                     "current_streak": None, "max_streak": None})
-    for name, s in (("Crossword", stats.crossword_daily), ("Mini", stats.crossword_mini),
-                    ("Midi", stats.crossword_midi)):
-        if s:
-            streak = getattr(s, "dailyStreaks", None) or getattr(s, "streaks", None)
-            rows.append({"game": name, "played": s.puzzlesStarted, "won": s.puzzlesSolved,
-                         "current_streak": streak.current if streak else None,
-                         "max_streak": streak.longest if streak else None})
-    for row in rows:
-        row["win_rate"] = percent(row["won"], row["played"])
-    return rows
-
-
 def stats(
     game: Annotated[Game, typer.Argument(help="A game for more detail, or all for a summary.")] = Game.all,
     fmt: FormatOption = None,
@@ -116,7 +61,7 @@ def stats(
     player = state.client().player_stats()
     s = player.stats
     if game == Game.all:
-        data = summary_rows(s)
+        data = views.summary_rows(s)
 
         def table(data):
             t = Table(title=f"NYT Games stats for user {player.user_id}", title_justify="left",
@@ -237,44 +182,8 @@ def crossword_table(data):
 
 def today(fmt: FormatOption = None) -> None:
     """Show which of today's games you've played."""
-    client = state.client()
     day = nyt_today().isoformat()
-    player = client.player_stats()
-    rows = []
-
-    wordle_id = client.wordle(day).id
-    states = client.wordle_latest(wordle_id).states
-    if states:
-        g = states[0].game_data
-        rows.append({"game": "Wordle", "status": wordle_status(g),
-                     "detail": f"{g.currentRowIndex}/6" if g.status == "WIN" else ""})
-    else:
-        rows.append({"game": "Wordle", "status": "not played", "detail": ""})
-
-    for name, s in (("Connections", player.stats.connections), ("Strands", player.stats.strands)):
-        played = bool(s and s.last_played_print_date == day)
-        rows.append({"game": name, "status": "played" if played else "not played", "detail": ""})
-
-    bee = client.spelling_bee_puzzle(day)
-    states = client.spelling_bee_latest(bee.id).states
-    if states:
-        g = states[0].game_data
-        rows.append({"game": "Spelling Bee", "status": g.rank or "played",
-                     "detail": f"{len(g.answers)}/{len(bee.answers)} words"})
-    else:
-        rows.append({"game": "Spelling Bee", "status": "not played", "detail": ""})
-
-    for kind in ("daily", "mini", "midi"):
-        results = crossword_results(client, kind, datetime.date.fromisoformat(day),
-                                    datetime.date.fromisoformat(day))
-        if not results:
-            continue
-        r = results[0]
-        status = ("solved" if r["solved"] else "in progress" if r["percent_filled"] else "not played")
-        detail = " ".join(x for x in (format_seconds(r["seconds"]) if r["seconds"] else "",
-                                      "⭐" if (r["star"] or "").lower() == "gold" else "") if x)
-        rows.append({"game": "Crossword" if kind == "daily" else kind.title(), "status": status,
-                     "detail": detail})
+    rows = views.today_rows(state.client(), nyt_today())
 
     def table(data):
         done = {"win", "solved", "played", "queen bee", "genius"}
@@ -320,61 +229,6 @@ class CrosswordKind(str, enum.Enum):
     bonus = "bonus"
 
 
-def crossword_results(client, kind: str, first: datetime.date, last: datetime.date) -> list[dict]:
-    """Return the user's crossword results for a date range.
-
-    Daily, Mini and Bonus puzzles come from NYT's crossword list, 90 days at a
-    time. That list doesn't include Midi puzzles, so Midi puzzles come from the
-    games archive and their progress from the saved game states.
-    """
-    puzzles = []
-    if kind == "midi":
-        for puzzle in client.archive("crossword_midi", first.isoformat(), last.isoformat()):
-            puzzles.append({"date": puzzle.print_date, "puzzle_id": puzzle.id,
-                            "title": "", "author": puzzle.byline or ""})
-    else:
-        window_start = first
-        while window_start <= last:
-            window_end = min(window_start + datetime.timedelta(days=LIST_DAYS - 1), last)
-            for item in client.crossword_puzzles(kind, sort_order="asc", sort_by="print_date",
-                                                 date_start=window_start.isoformat(),
-                                                 date_end=window_end.isoformat()).results:
-                puzzles.append({"date": item.print_date, "puzzle_id": item.puzzle_id,
-                                "title": item.title, "author": item.author, "solved": item.solved,
-                                "percent_filled": item.percent_filled, "star": item.star})
-            window_start = window_end + datetime.timedelta(days=1)
-
-    games = {}
-    ids = [p["puzzle_id"] for p in puzzles]
-    for batch in progress(list(chunks(ids, STATE_BATCH)), len(ids) // STATE_BATCH + 1,
-                          "Fetching solve times"):
-        for game in client.crossword_game(batch, kind).states:
-            games[int(game.puzzle_id)] = game.game_data
-
-    rows = []
-    for p in sorted(puzzles, key=lambda p: p["date"]):
-        g = games.get(p["puzzle_id"])
-        extra = (g.model_extra or {}) if g else {}
-        if "solved" not in p:
-            p["solved"] = bool(g and g.firstSolve)
-            p["percent_filled"] = round(100 * (g.completionFraction or 0)) if g else 0
-            p["star"] = g.star if g else None
-        rows.append({
-            "date": p["date"],
-            "weekday": datetime.date.fromisoformat(p["date"]).strftime("%A"),
-            "puzzle_id": p["puzzle_id"],
-            "title": p["title"],
-            "author": p["author"],
-            "solved": p["solved"],
-            "percent_filled": p["percent_filled"],
-            "star": p["star"],
-            "seconds": g.playTimeSeconds if g else None,
-            "first_solve_date": g.firstSolveDate if g else None,
-            "used_help": bool(extra.get("firstSolveUsedAid") or extra.get("revealed")) if g else None,
-        })
-    return rows
-
-
 def history_crossword(
     publish_type: Annotated[CrosswordKind, typer.Argument(help="daily, mini, midi or bonus.")] = CrosswordKind.daily,
     start: FromOption = None,
@@ -384,7 +238,7 @@ def history_crossword(
     """Your crossword results: solved, solve time, gold star and help used."""
     kind = publish_type.value
     first, last = date_window(start, end, f"crossword-{kind}")
-    rows = crossword_results(state.client(), kind, first, last)
+    rows = views.crossword_results(state.client(), kind, first, last, progress)
 
     def table(data):
         t = Table(title=f"{kind.title()} crosswords {first} to {last}", title_justify="left",
@@ -408,23 +262,8 @@ def history_crossword(
 
 def history_wordle(start: FromOption = None, end: ToOption = None, fmt: FormatOption = None) -> None:
     """Your Wordle results: won or lost, and guesses."""
-    client = state.client()
     first, last = date_window(start, end, "wordle")
-    ids = {p.id: p.print_date for p in client.archive("wordle", first.isoformat(), last.isoformat())}
-    states = {}
-    for batch in chunks(list(ids), STATE_BATCH):
-        for game in client.wordle_latest(batch).states:
-            states[int(game.puzzle_id)] = game.game_data
-    rows = []
-    for puzzle_id, day in ids.items():
-        g = states.get(puzzle_id)
-        rows.append({
-            "date": day, "puzzle_id": puzzle_id,
-            "status": wordle_status(g) if g else "not played",
-            "guesses": g.currentRowIndex if g and g.status == "WIN" else None,
-            "hard_mode": g.hardMode if g else None,
-            "board": [w for w in g.boardState if w] if g else [],
-        })
+    rows = views.wordle_results(state.client(), first, last)
 
     def table(data):
         t = Table(title=f"Wordle {first} to {last}", title_justify="left", header_style="bold")
@@ -441,30 +280,8 @@ def history_wordle(start: FromOption = None, end: ToOption = None, fmt: FormatOp
 
 def history_bee(start: FromOption = None, end: ToOption = None, fmt: FormatOption = None) -> None:
     """Your Spelling Bee results: rank and words found."""
-    client = state.client()
     first, last = date_window(start, end, "spelling-bee")
-    days = list(date_range(first, last))
-    puzzles = {}
-    for day in progress(days, len(days), "Fetching puzzles"):
-        try:
-            puzzle = client.spelling_bee_puzzle(day.isoformat())
-            puzzles[puzzle.id] = puzzle
-        except NYTGamesNotFoundError:
-            pass
-    states = {}
-    for batch in chunks(list(puzzles), STATE_BATCH):
-        for game in client.spelling_bee_latest(batch).states:
-            states[int(game.puzzle_id)] = game.game_data
-    rows = []
-    for puzzle_id, puzzle in puzzles.items():
-        g = states.get(puzzle_id)
-        found = set(g.answers) if g else set()
-        rows.append({
-            "date": puzzle.printDate, "puzzle_id": puzzle_id,
-            "rank": (g.rank or "played") if g else "not played",
-            "words": len(found), "total_words": len(puzzle.answers),
-            "pangrams": len(found & set(puzzle.pangrams)), "total_pangrams": len(puzzle.pangrams),
-        })
+    rows = views.bee_results(state.client(), first, last, progress)
 
     def table(data):
         t = Table(title=f"Spelling Bee {first} to {last}", title_justify="left", header_style="bold")
@@ -476,30 +293,6 @@ def history_bee(start: FromOption = None, end: ToOption = None, fmt: FormatOptio
         yield t
 
     emit(rows, fmt, table)
-
-
-def skill_rank(efficiency: float | None, percentiles: dict | None) -> list | None:
-    """Return the [low, high] percentiles a skill score falls between.
-
-    NYT publishes only some percentiles (e.g. p25 and p75 but nothing between),
-    so this is a range. 0 means below the lowest published percentile and
-    100 above the highest.
-    """
-    if efficiency is None or not percentiles:
-        return None
-    points = sorted((int(key[1:]), value) for key, value in percentiles.items() if key[1:].isdigit())
-    low = max((p for p, value in points if efficiency >= value), default=0)
-    high = min((p for p, value in points if efficiency < value), default=100)
-    return [low, high]
-
-
-def describe_rank(rank: list) -> str:
-    low, high = rank
-    if high == 100:
-        return f"your skill was above the {low}th percentile"
-    if low == 0:
-        return f"your skill was below the {high}th percentile"
-    return f"your skill was between the {low}th and {high}th percentiles"
 
 
 def wordlebot(
@@ -517,39 +310,8 @@ def wordlebot(
     puzzle = client.wordle(day.isoformat())
     summary = client.wordlebot_summary(day.isoformat(), solution=puzzle.solution)
 
-    mine = None
-    if day == nyt_today() and state.resolve_cookies()[0]:
-        mine = client.wordlebot()
-        if mine is not None and mine.gameNumber != puzzle.days_since_launch:
-            mine = None
-    mode = (mine.mode if mine and mine.mode in ("normal", "hard") else "normal")
-
-    def by_mode(values):
-        return (values or {}).get(mode)
-
-    data = {
-        "date": day.isoformat(),
-        "number": puzzle.days_since_launch,
-        "mode": mode,
-        "everyone": {
-            "players": (summary.steps or {}).get(f"{mode}Users"),
-            "average_guesses": by_mode(summary.average),
-            "skill": by_mode(summary.efficiency),
-            "luck": by_mode(summary.luck),
-            "solved_in_three_or_fewer": by_mode(summary.percentSolvingInThreeOrFewer),
-        },
-    }
-    if mine is not None:
-        data["you"] = {
-            "guesses": mine.guess_list,
-            "skill": mine.efficiency,
-            "luck": mine.luck,
-            "skill_percentile_range": skill_rank(mine.efficiency, by_mode(summary.percentiles)),
-            "skill_by_round": mine.efficiencyByRound,
-            "luck_by_round": mine.luckByRound,
-        }
-    if answers:
-        data["bot_paths"] = summary.guesses or {}
+    mine = client.wordlebot() if day == nyt_today() and state.resolve_cookies()[0] else None
+    data = views.wordlebot_view(day, puzzle, summary, mine, answers)
 
     def table(data):
         everyone, you = data["everyone"], data.get("you")
@@ -576,7 +338,7 @@ def wordlebot(
         if everyone["solved_in_three_or_fewer"] is not None:
             details.append(f"{100 * everyone['solved_in_three_or_fewer']:.0f}% solved in 3 or fewer")
         if you and you["skill_percentile_range"]:
-            details.append(describe_rank(you["skill_percentile_range"]))
+            details.append(views.describe_rank(you["skill_percentile_range"]))
         if details:
             yield Text(", ".join(details), style="dim")
         if you:

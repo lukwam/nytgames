@@ -20,7 +20,7 @@ git clone https://github.com/lukwam/nytimes-games.git
 cd nytimes-games
 python -m venv .venv
 source .venv/bin/activate
-pip install -e ".[api,cli,test]"
+pip install -e ".[api,cli,mcp,test]"
 pytest
 ```
 
@@ -43,6 +43,8 @@ src/nytgames/
     formats.py       Crossword export: .puz, .ipuz and Crossword Compiler .xml
     structure.py     Crossword entries and squares, Strands word paths
     api.py           Optional FastAPI app and router (the "api" extra)
+    views.py         Plain data views shared by nytg and the MCP server
+    mcp_server.py    Optional MCP server for AI agents (the "mcp" extra)
     cli/             Optional nytg command line (the "cli" extra)
         app.py       Root command, global options and error messages
         puzzles.py   Puzzle commands

@@ -15,7 +15,8 @@ NYT doesn't publish documentation or an API spec for these endpoints. This
 package wraps them in one client with typed, validated
 [Pydantic](https://docs.pydantic.dev/) models, so you can build archives,
 stats dashboards, bots or your own games without reverse engineering NYT's
-APIs first. Optional extras add the `nytg` command line tool and a REST API.
+APIs first. Optional extras add the `nytg` command line tool, an MCP server
+for AI agents, and a REST API.
 
 ![nytg showing a Connections puzzle, a Strands board, a Mini crossword and Spelling Bee hints](https://raw.githubusercontent.com/lukwam/nytimes-games/main/docs/screenshot.svg)
 
@@ -418,6 +419,39 @@ table)` prints JSON-compatible data in the requested format, with an optional
 function that renders the table format. `get_client()` returns a client with
 the cookies `nytg` would use. The other modules in `nytgames.cli` are
 internal.
+
+## MCP server for AI agents
+
+The optional `mcp` extra installs `nytg-mcp`, a local
+[Model Context Protocol](https://modelcontextprotocol.io) server, so coding
+agents and other MCP clients can use the NYT Games directly: ask Claude Code
+for a Connections hint, your Saturday solve times, or to export yesterday's
+crossword to `.puz`.
+
+```bash
+# Claude Code
+claude mcp add nytimes-games -- uvx --from "nytimes-games[mcp]" nytg-mcp
+```
+
+For other clients (Claude Desktop, Cursor, VS Code and so on), add a stdio
+server with the command `uvx` and the arguments
+`--from nytimes-games[mcp] nytg-mcp`, or install the package and use the
+command `nytg-mcp`.
+
+| Tools | What they do |
+|---|---|
+| `wordle`, `connections`, `strands`, `spelling_bee`, `letter_boxed`, `crossword` | Puzzles for any date; crosswords include each entry's clue, position and crossings |
+| `wordlebot_summary`, `puzzle_archive` | How everyone did on a Wordle; puzzle IDs for a date range |
+| `stats`, `today`, `crossword_history`, `wordle_history`, `spelling_bee_history`, `wordlebot` | Your stats, progress and WordleBot analysis (need cookies) |
+| `export_crossword` | Save a crossword as `.puz`, `.ipuz` or `.xml`, optionally with your progress |
+
+- Answers are hidden unless the agent passes `include_answers`, and the server
+  tells agents to leave them hidden while you're still solving.
+- Your own data uses the same cookies as `nytg`: `nytg auth login`, or set
+  `NYT_COOKIES` in the server's environment. Cookie values are never returned
+  or logged.
+- Every tool is read-only except `export_crossword`, which only writes the file
+  you ask for and won't overwrite one unless asked.
 
 ## REST API
 
