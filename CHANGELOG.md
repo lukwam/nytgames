@@ -4,6 +4,25 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.8.3
+
+### Security
+
+- `nytg` could print cookie values in a traceback when `NYT_COOKIES` or
+  `--cookies` held a Cookie-Editor JSON export: it was parsed as a Cookie
+  header string, producing an invalid header whose error message contained
+  every cookie. Reported by nyt-puzzles. If you hit this, rotate your NYT
+  cookies (log out and back in).
+
+### Fixed
+
+- `parse_cookies()` (and so `NYTGamesClient`, `NYT_COOKIES` and
+  `--cookies`) accepts a JSON export or JSON object as a string.
+- Cookies are checked before any request; invalid ones raise `ValueError`
+  naming the cookie but never showing its value.
+- `nytg` never prints raw tracebacks: unexpected errors print a one-line
+  message with any cookie values redacted.
+
 ## 0.8.2
 
 ### Added

@@ -4,6 +4,7 @@
 error handling. Both are public through ``nytgames.cli.extension``, so other
 tools can build their own command line on top of nytg's.
 """
+import re
 import sys
 from typing import Annotated
 from typing import Any
@@ -11,12 +12,14 @@ from typing import Optional
 
 import requests
 import typer
+from rich.markup import escape
 
 from nytgames import NYTGamesAuthenticationError
 from nytgames import NYTGamesNotFoundError
 from nytgames import NYTGamesParseError
 from nytgames import NYTGamesRateLimitError
 from nytgames import __version__
+from nytgames import parse_cookies
 from nytgames.cli import archive
 from nytgames.cli import output
 from nytgames.cli import player
@@ -95,6 +98,28 @@ def create_app(
     return app
 
 
+def cookie_values(raw: str | None) -> set[str]:
+    """Return every cookie value that might appear in raw cookies, even malformed ones."""
+    if not raw:
+        return set()
+    values = set(re.findall(r'"value"\s*:\s*"((?:[^"\\]|\\.)*)"', raw))
+    for part in re.split(r"[;\n]", raw):
+        values.add(part.partition("=")[2].strip())
+    try:
+        values.update(parse_cookies(raw).values())
+    except ValueError:
+        pass
+    values.add(raw)
+    return {value for value in values if len(value) >= 6}
+
+
+def redact(text: str) -> str:
+    """Remove the values of any cookies in use from an error message."""
+    for value in sorted(cookie_values(state.resolve_cookies()[0]), key=len, reverse=True):
+        text = text.replace(value, "…")
+    return text
+
+
 def run(app: typer.Typer) -> None:
     """Run an app, turning NYT errors into short messages and exit codes.
 
@@ -118,13 +143,17 @@ def run(app: typer.Typer) -> None:
         output.err_console.print("[red]Not found.[/red] NYT has no puzzle for that date.")
         sys.exit(1)
     except NYTGamesParseError as err:
-        output.err_console.print(f"[red]Couldn't read NYT's response:[/red] {err}")
+        output.err_console.print(f"[red]Couldn't read NYT's response:[/red] {escape(str(err))}")
         sys.exit(1)
     except requests.RequestException as err:
-        output.err_console.print(f"[red]Request to NYT failed:[/red] {err}")
+        output.err_console.print(f"[red]Request to NYT failed:[/red] {escape(redact(str(err)))}")
         sys.exit(1)
     except KeyboardInterrupt:
         sys.exit(130)
+    except Exception as err:  # noqa: BLE001 - never print a traceback that may contain cookies
+        output.err_console.print(f"[red]Error:[/red] {type(err).__name__}: {escape(redact(str(err)))}",
+                                 highlight=False)
+        sys.exit(1)
 
 
 app = create_app()
