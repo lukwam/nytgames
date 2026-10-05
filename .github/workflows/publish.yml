@@ -19,7 +19,7 @@ jobs:
         run: |
           version=$(python -c "import re; print(re.search(r'__version__ = \"(.+)\"', open('src/nytgames/__init__.py').read()).group(1))")
           test "v${version}" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} does not match version ${version}"; exit 1; }
-      - run: pip install -e ".[api,cli,test]" build
+      - run: pip install -e ".[api,cli,mcp,test]" build
       - run: pytest
       - run: python -m build
       - uses: actions/upload-artifact@v7
