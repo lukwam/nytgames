@@ -3,6 +3,7 @@
 These tests mock the HTTP session, so they run offline and do not need NYT
 cookies.
 """
+import json
 from unittest import mock
 
 import pytest
@@ -292,3 +293,28 @@ def test_crossword_by_id(session):
         "id": 20759, "body": [], "constructors": [], "copyright": "", "lastUpdated": "", "publicationDate": ""}
     assert NYTGamesClient(session=session).crossword_by_id(20759).id == 20759
     assert session.get.call_args.args[0] == "https://www.nytimes.com/svc/crosswords/v6/puzzle/20759.json"
+
+
+@pytest.mark.parametrize("cookies", [
+    json.dumps([{"domain": ".nytimes.com", "name": "NYT-S", "value": "abc="}, {"name": "nyt-a", "value": "def"}],
+               indent=2),
+    '{"NYT-S": "abc=", "nyt-a": "def"}',
+])
+def test_parse_cookies_json_strings(cookies):
+    """A Cookie-Editor JSON export or a JSON object works as a string too."""
+    assert parse_cookies(cookies) == {"NYT-S": "abc=", "nyt-a": "def"}
+
+
+@pytest.mark.parametrize("cookies", [
+    {"NYT-S": "SECRET\\nVALUE"},
+    {"NYT-S": "SECRET;VALUE"},
+    {"bad name": "SECRETVALUE"},
+    '[{"name": "NYT-S", "value": "SECRETVALUE"',
+])
+def test_bad_cookies_never_show_their_values(cookies):
+    """Cookies that can't be sent raise ValueError without the value in the message."""
+    if isinstance(cookies, dict):
+        cookies = {k: v.replace("\\n", "\n") for k, v in cookies.items()}
+    with pytest.raises(ValueError) as info:
+        NYTGamesClient(cookies=cookies)
+    assert "SECRET" not in str(info.value)

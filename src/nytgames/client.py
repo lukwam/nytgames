@@ -58,25 +58,56 @@ def join_puzzle_ids(puzzle_ids: PuzzleIds) -> str | None:
     return ",".join(str(puzzle_id) for puzzle_id in puzzle_ids)
 
 
+COOKIE_NAME = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
+COOKIE_VALUE_FORBIDDEN = re.compile(r"[\x00-\x1f\x7f;]")
+
+
 def parse_cookies(cookies: Cookies) -> dict[str, str]:
     """Return cookies as a dict.
 
     Accepts a dict of cookie names to values, a list of cookie objects with
-    `name` and `value` keys (the Cookie-Editor JSON export format), or a
-    `Cookie` header string such as `"NYT-S=...; nyt-a=..."`.
+    `name` and `value` keys (the Cookie-Editor JSON export format), either of
+    those as a JSON string, or a `Cookie` header string such as
+    `"NYT-S=...; nyt-a=..."`.
+
+    Raises ValueError for cookies that can't be sent, without including any
+    cookie values in the message.
     """
     if not cookies:
         return {}
     if isinstance(cookies, str):
+        text = cookies.strip()
+        if text.startswith(("[", "{")):
+            try:
+                return parse_cookies(json.loads(text))
+            except json.JSONDecodeError:
+                raise ValueError("The cookies look like JSON but couldn't be read as JSON") from None
         parsed = {}
-        for part in cookies.split(";"):
+        for part in text.split(";"):
             name, sep, value = part.strip().partition("=")
             if sep:
-                parsed[name] = value
-        return parsed
+                parsed[name.strip()] = value.strip()
+        return check_cookies(parsed)
     if isinstance(cookies, Mapping):
-        return dict(cookies)
-    return {cookie["name"]: cookie["value"] for cookie in cookies}
+        return check_cookies({str(k): str(v) for k, v in cookies.items()})
+    try:
+        return check_cookies({str(c["name"]): str(c["value"]) for c in cookies})
+    except (KeyError, TypeError):
+        raise ValueError("Cookie lists need a name and value for each cookie") from None
+
+
+def check_cookies(cookies: dict[str, str]) -> dict[str, str]:
+    """Raise ValueError if any cookie can't be sent in a Cookie header.
+
+    The message names the cookie but never includes its value.
+    """
+    for name, value in cookies.items():
+        if not COOKIE_NAME.match(name):
+            raise ValueError("A cookie has an invalid name (cookie values aren't shown)")
+        if COOKIE_VALUE_FORBIDDEN.search(value):
+            raise ValueError(f"The {name} cookie's value has characters that can't be sent "
+                             "(such as line breaks or semicolons); its value isn't shown")
+    return cookies
 
 
 def retrying_session(retries: int = 3, backoff: float = 0.5) -> requests.Session:

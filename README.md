@@ -177,6 +177,12 @@ access to your NYT account.
 - a dict: `{"NYT-S": "..."}`
 - a list of cookie objects with `name` and `value` keys, such as a JSON export
   from the Cookie-Editor browser extension
+- either of those as a JSON string, so `NYT_COOKIES="$(cat cookies.json)"`
+  works with an export file
+
+Cookies that can't be sent (for example with line breaks in a value) raise
+`ValueError` before any request is made, and error messages never include
+cookie values.
 
 ## Errors
 

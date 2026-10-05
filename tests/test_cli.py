@@ -306,3 +306,38 @@ def test_archive_manifest_and_revisions(client, tmp_path):
     assert json.loads((out / "wordle" / "2025-06-12.json").read_text())["editor"] == "Fixed"
     record = json.loads((out / "wordle" / "manifest.json").read_text())["files"]["2025-06-12.json"]
     assert record["revisions"][0]["file"] == f"revisions/{revisions[0].name}"
+
+
+def test_nyt_cookies_json_export(monkeypatch):
+    """NYT_COOKIES can hold a Cookie-Editor JSON export, as the client accepts."""
+    export = json.dumps([{"domain": ".nytimes.com", "name": "NYT-S", "value": "abc="}], indent=2)
+    monkeypatch.setenv("NYT_COOKIES", export)
+    assert State().client().cookies == {"NYT-S": "abc="}
+
+
+def test_errors_never_print_cookie_values(monkeypatch, capsys):
+    """Unexpected errors print a short message with cookie values redacted, not a traceback."""
+    secret = "TOPSECRETCOOKIEVALUE"
+    monkeypatch.setenv("NYT_COOKIES", f"NYT-S={secret}")
+
+    def boom(self, *args, **kwargs):
+        raise ValueError(f"Invalid header value b'NYT-S={secret}'")
+
+    monkeypatch.setattr("nytgames.client.NYTGamesClient.wordle", boom)
+    monkeypatch.setattr(sys, "argv", ["nytg", "wordle", "2025-06-12"])
+    with pytest.raises(SystemExit) as exit_info:
+        cli_main.main()
+    err = capsys.readouterr().err
+    assert exit_info.value.code == 1
+    assert secret not in err and "Traceback" not in err and "ValueError" in err
+
+
+def test_malformed_cookie_export_is_redacted(monkeypatch, capsys):
+    """Even cookies that can't be parsed are redacted from error output."""
+    secret = "TOPSECRETCOOKIEVALUE"
+    monkeypatch.setenv("NYT_COOKIES", '[{"name": "NYT-S", "value": "' + secret + '"')
+    monkeypatch.setattr(sys, "argv", ["nytg", "wordle", "2025-06-12"])
+    with pytest.raises(SystemExit):
+        cli_main.main()
+    err = capsys.readouterr().err
+    assert secret not in err and "couldn't be read as JSON" in err
