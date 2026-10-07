@@ -40,6 +40,7 @@ src/nytgames/
     models.py        Pydantic models for NYT's responses
     exceptions.py    Error types
     spelling_bee.py  Spelling Bee hints
+    badges.py        Badge names, descriptions and artwork, from badges.json
     formats.py       Crossword export: .puz, .ipuz and Crossword Compiler .xml
     structure.py     Crossword entries and squares, Strands word paths
     api.py           Optional FastAPI app and router (the "api" extra)

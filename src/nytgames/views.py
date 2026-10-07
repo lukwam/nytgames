@@ -399,6 +399,39 @@ def today_rows(client, day: datetime.date) -> list[dict]:
     return rows
 
 
+# Badges
+
+BADGE_GAME_NAMES = {"wordleV2": "Wordle", "connections": "Connections", "strands": "Strands",
+                    "spelling_bee": "Spelling Bee"}
+
+
+def badge_view(badge) -> dict:
+    """Return a badge with its name, description and artwork at your level,
+    or at the next level if you haven't earned it."""
+    info = badge.info
+    level = badge.level if badge.is_earned else badge.next_level
+    earned_at = max(badge.earned_at, default=None)
+    return {
+        "id": badge.id,
+        "name": info.name(level) if info else badge.id,
+        "type": badge.badge_type,
+        "earned": badge.is_earned,
+        "level": badge.level,
+        "next_level": badge.next_level,
+        "progress": badge.progress,
+        "last_earned": (datetime.datetime.fromtimestamp(earned_at, datetime.timezone.utc).date().isoformat()
+                        if earned_at else None),
+        "description": info.description(level, badge.is_earned, badge.progress) if info else None,
+        "image_url": info.image_url(level, badge.is_earned) if info else None,
+    }
+
+
+def badge_rows(case) -> list[dict]:
+    """Return every badge in a trophy case, earned ones first, by game."""
+    return [{"game": BADGE_GAME_NAMES.get(game, game), **badge_view(badge)}
+            for game, trophies in case.trophies.items() for badge in trophies.badges]
+
+
 # WordleBot
 
 

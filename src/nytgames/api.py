@@ -43,6 +43,7 @@ from nytgames import formats
 from nytgames import spelling_bee_hints
 from nytgames.models import ArchiveGame
 from nytgames.models import ArchivePuzzle
+from nytgames.models import BadgeGame
 from nytgames.models import ConnectionsLatest
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
@@ -57,6 +58,7 @@ from nytgames.models import SpellingBeeGameDay
 from nytgames.models import SpellingBeeLatest
 from nytgames.models import StrandsLatest
 from nytgames.models import StrandsPuzzle
+from nytgames.models import TrophyCase
 from nytgames.models import WordleBotAnalysis
 from nytgames.models import WordleBotSummary
 from nytgames.models import WordlePuzzle
@@ -157,6 +159,50 @@ def get_archive(
     ```
     """
     return client.archive(game, date_start, date_end)
+
+
+# Badges
+@router.get(
+    "/badges",
+    response_model=TrophyCase,
+    summary="List every badge for every game",
+    tags=["Badges"],
+)
+def get_badges(client: NYTGamesClient = Depends(get_client)) -> TrophyCase:
+    """
+    **List badges**
+
+    Returns every badge for Wordle, Connections, Strands and Spelling Bee,
+    earned or not, with the user's progress. Requires the `NYT-S` cookie.
+    Makes one request per game.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/games/badges/trophy-case/{game}
+    ```
+    """
+    return client.badges()
+
+
+@router.get(
+    "/badges/{game}",
+    response_model=TrophyCase,
+    summary="List every badge for a game",
+    tags=["Badges"],
+)
+def get_trophy_case(game: BadgeGame, client: NYTGamesClient = Depends(get_client)) -> TrophyCase:
+    """
+    **List a game's badges**
+
+    Returns every badge for wordleV2, connections, strands or spelling_bee,
+    earned or not, with the user's progress. Requires the `NYT-S` cookie.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/games/badges/trophy-case/{game}
+    ```
+    """
+    return client.trophy_case(game)
 
 
 # Connections

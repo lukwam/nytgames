@@ -84,6 +84,20 @@ Puzzles don't need cookies. Everything about you does.
 | Strands progress | `strands_latest(puzzle_ids)` | Your found words, other words and whether you solved it (up to 30 puzzles per call) |
 | WordleBot | `wordlebot()` | Your luck and skill for today's Wordle, overall and by round (today only, after you've opened WordleBot) |
 | Spelling Bee progress | `spelling_bee_latest(puzzle_ids)` | Words you found and your rank (up to 30 puzzles per call) |
+| Badges | `badges(games)`, `trophy_case(game)` | Every Wordle, Connections, Strands and Spelling Bee badge, earned or not, with your level and progress. Each badge's `info` has its name, description and artwork |
+
+The `*_latest()` results also include `badges_trophy_shelf`, the three badges
+NYT features for that game. Badge names, descriptions and artwork come from a
+copy of the games app's own table in `nytgames.badges` (`badge_info(id)`,
+`all_badges()`), since NYT doesn't serve them from an API:
+
+```python
+for game, trophies in client.badges().trophies.items():
+    for badge in trophies.badges:
+        info = badge.info
+        print(game, badge.name, badge.progress, badge.next_level,
+              info.image_url(badge.level or badge.next_level, earned=badge.is_earned) if info else "")
+```
 
 NYT doesn't record individual solve events, so progress means your saved
 game: the current state and totals, not a history of each move.
@@ -340,6 +354,8 @@ nytg history wordle --from monday
 nytg history connections         # won or lost, mistakes and groups found
 nytg history strands
 nytg history bee
+nytg badges                      # every badge, earned or not, and your progress
+nytg badges wordle --earned
 ```
 
 Cookies are read from `--cookies`, then the `NYT_COOKIES` environment
@@ -448,7 +464,7 @@ command `nytg-mcp`.
 |---|---|
 | `wordle`, `connections`, `strands`, `spelling_bee`, `letter_boxed`, `crossword` | Puzzles for any date; crosswords include each entry's clue, position and crossings |
 | `wordlebot_summary`, `puzzle_archive` | How everyone did on a Wordle; puzzle IDs for a date range |
-| `stats`, `today`, `crossword_history`, `wordle_history`, `spelling_bee_history`, `wordlebot` | Your stats, progress and WordleBot analysis (need cookies) |
+| `stats`, `today`, `crossword_history`, `wordle_history`, `spelling_bee_history`, `wordlebot`, `badges` | Your stats, progress, WordleBot analysis and badges (need cookies) |
 | `export_crossword` | Save a crossword as `.puz`, `.ipuz` or `.xml`, optionally with your progress |
 
 - Answers are hidden unless the agent passes `include_answers`, and the server
@@ -515,6 +531,8 @@ running your own instance in a container.
 | Route | NYT endpoint |
 |---|---|
 | `GET /archive/{game}/{date_start}/{date_end}` | `svc/games/v1/archive/{game}/{date_start}/{date_end}` |
+| `GET /badges` | `svc/games/badges/trophy-case/{game}` for each game |
+| `GET /badges/{game}` | `svc/games/badges/trophy-case/{game}` |
 | `GET /connections/latest` | `svc/games/state/connections/latests` |
 | `GET /connections/{date}` | `svc/connections/v2/{date}.json` |
 | `GET /crosswords/daily/today` | `svc/crosswords/v6/puzzle/daily.json` |

@@ -1,0 +1,801 @@
+{
+ "_source": "NYT Games web app bundles (badge metadata and levels), 2026-10-06; sb12 has no levels yet, and its type and game are inferred from its artwork",
+ "assetBase": "https://www.nytimes.com/games-assets/v2",
+ "descriptionPrefixes": {
+  "unearned": "Earn this badge by ",
+  "unearnedForSubscribers": "Subscribers can earn this badge by ",
+  "earned": "You earned this badge by ",
+  "earnedMultiple": "You earned this badge {AMOUNT} times by "
+ },
+ "badges": [
+  {
+   "uniqueId": "cx1",
+   "badge_type": "milestone",
+   "games": [
+    "connections"
+   ],
+   "levels": [
+    3,
+    5,
+    10,
+    15,
+    25,
+    50,
+    75,
+    100,
+    150,
+    200,
+    250,
+    350,
+    500
+   ],
+   "displayName": "Purple First",
+   "descriptionBody": "successfully completing {LEVEL} Connections puzzles after getting the purple category first.",
+   "imageUrl": "/assets/badges/svgs/cx_milestone_purple-first_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/cx_milestone_purple-first_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/cx_milestone_purple-first_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "cx2",
+   "badge_type": "milestone",
+   "games": [
+    "connections"
+   ],
+   "levels": [
+    3,
+    5,
+    10,
+    15,
+    25,
+    50,
+    75,
+    100,
+    150,
+    200,
+    250,
+    350,
+    500
+   ],
+   "displayName": "Perfect Puzzle",
+   "descriptionBody": "completing {LEVEL} Connections puzzles without any mistakes.",
+   "imageUrl": "/assets/badges/svgs/cx_milestone_perfect_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/cx_milestone_perfect_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/cx_milestone_perfect_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "cx3",
+   "badge_type": "streak",
+   "games": [
+    "connections"
+   ],
+   "levels": [
+    7,
+    14,
+    30,
+    60,
+    100,
+    150,
+    250,
+    365
+   ],
+   "checkpoints": [
+    2,
+    3,
+    5,
+    8,
+    10,
+    12,
+    18,
+    21,
+    25,
+    35,
+    45,
+    50,
+    70,
+    80,
+    90,
+    110,
+    125,
+    140,
+    175,
+    200,
+    225,
+    275,
+    300,
+    330,
+    350
+   ],
+   "displayName": "{LEVEL}-day Streak",
+   "descriptionBody": "completing {LEVEL} consecutive daily Connections puzzles without losing.",
+   "imageUrl": "/assets/badges/svgs/cx_streak_streak_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/streak_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/streak_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "cx4",
+   "badge_type": "milestone",
+   "games": [
+    "connections"
+   ],
+   "levels": [
+    1
+   ],
+   "displayName": "First Purple First",
+   "descriptionBody": "successfully completing your first Connections puzzle, which began with the purple category.",
+   "imageUrl": "/assets/badges/svgs/cx_challenge_purple-first.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/cx_challenge_purple-first_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/cx_challenge_purple-first_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "cx5",
+   "badge_type": "milestone",
+   "games": [
+    "connections"
+   ],
+   "levels": [
+    1
+   ],
+   "displayName": "First Perfect Puzzle",
+   "descriptionBody": "completing your first Connections puzzle without any mistakes.",
+   "imageUrl": "/assets/badges/svgs/cx_challenge_perfect.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/cx_challenge_perfect_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/cx_challenge_perfect_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "cx6",
+   "badge_type": "challenge",
+   "games": [
+    "connections"
+   ],
+   "displayName": "Trick-or-Triumph Challenge",
+   "descriptionBody": "successfully completing a special themed Connections puzzle published on October 31, 2025.",
+   "imageUrl": "/assets/badges/svgs/cx_challenge_halloween-2025.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/cx_challenge_halloween-2025_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/cx_challenge_halloween-2025_unearned_dark.svg",
+   "requiresSubscription": true
+  },
+  {
+   "uniqueId": "cx7",
+   "badge_type": "progress",
+   "games": [
+    "connections"
+   ],
+   "displayName": "Reverse Rainbow",
+   "descriptionBody": "successfully completing a Connections puzzle with no mistakes while getting the categories in this order: Purple, Blue, Green, Yellow.",
+   "imageUrl": "/assets/badges/svgs/cx_progress_reverse-rainbow.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/cx_progress_reverse-rainbow_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/cx_progress_reverse-rainbow_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "cx8",
+   "badge_type": "challenge",
+   "games": [
+    "connections"
+   ],
+   "displayName": "1000th Puzzle Challenge",
+   "descriptionBody": "successfully completing a special themed Connections puzzle published on March 7, 2026.",
+   "imageUrl": "/assets/badges/svgs/cx_challenge_1000th.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/cx_challenge_1000th_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/cx_challenge_1000th_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "cx9",
+   "badge_type": "milestone",
+   "games": [
+    "connections"
+   ],
+   "levels": [
+    1000
+   ],
+   "displayName": "1000 Connections",
+   "descriptionBody": "completing 1000 Connections puzzles, on any date, win or lose.",
+   "imageUrl": "/assets/badges/svgs/cx_milestone_puzzles_1000.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/cx_milestone_puzzles_1000_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/cx_milestone_puzzles_1000_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "sb1",
+   "badge_type": "milestone",
+   "games": [
+    "spelling_bee"
+   ],
+   "levels": [
+    1
+   ],
+   "displayName": "First Genius",
+   "descriptionBody": "reaching the Genius rank in Spelling Bee.",
+   "imageUrl": "/assets/badges/svgs/sb_challenge_genius.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_challenge_genius_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_challenge_genius_unearned_dark.svg",
+   "requiresSubscription": true
+  },
+  {
+   "uniqueId": "sb2",
+   "badge_type": "milestone",
+   "games": [
+    "spelling_bee"
+   ],
+   "levels": [
+    1
+   ],
+   "displayName": "First Queen Bee",
+   "descriptionBody": "reaching the Queen Bee rank in Spelling Bee.",
+   "imageUrl": "/assets/badges/svgs/sb_challenge_queen-bee.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_challenge_queen-bee_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_challenge_queen-bee_unearned_dark.svg",
+   "requiresSubscription": true
+  },
+  {
+   "uniqueId": "sb3",
+   "badge_type": "milestone",
+   "games": [
+    "spelling_bee"
+   ],
+   "levels": [
+    1
+   ],
+   "displayName": "First Pangram",
+   "descriptionBody": "finding a Pangram in Spelling Bee.",
+   "imageUrl": "/assets/badges/svgs/sb_challenge_pangram.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_challenge_pangram_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_challenge_pangram_unearned_dark.svg",
+   "requiresSubscription": false,
+   "isEarnableMidGame": true
+  },
+  {
+   "uniqueId": "sb4",
+   "badge_type": "milestone",
+   "games": [
+    "spelling_bee"
+   ],
+   "levels": [
+    5,
+    10,
+    15,
+    25,
+    50,
+    75,
+    100,
+    150,
+    200,
+    300,
+    500,
+    750,
+    1000
+   ],
+   "displayName": "Genius",
+   "descriptionBody": "reaching the Genius rank in Spelling Bee {LEVEL} times.",
+   "imageUrl": "/assets/badges/svgs/sb_milestone_genius_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_milestone_genius_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_milestone_genius_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": true
+  },
+  {
+   "uniqueId": "sb5",
+   "badge_type": "milestone",
+   "games": [
+    "spelling_bee"
+   ],
+   "levels": [
+    5,
+    10,
+    15,
+    25,
+    50,
+    75,
+    100,
+    150,
+    200,
+    300,
+    500,
+    750,
+    1000
+   ],
+   "displayName": "Queen Bee",
+   "descriptionBody": "reaching the Queen Bee rank in Spelling Bee {LEVEL} times.",
+   "imageUrl": "/assets/badges/svgs/sb_milestone_queen-bee_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_milestone_queen-bee_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_milestone_queen-bee_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": true
+  },
+  {
+   "uniqueId": "sb6",
+   "badge_type": "milestone",
+   "games": [
+    "spelling_bee"
+   ],
+   "levels": [
+    3,
+    5,
+    10,
+    15,
+    25,
+    40,
+    60,
+    90,
+    150,
+    300,
+    500,
+    750,
+    1000
+   ],
+   "displayName": "Pangram",
+   "descriptionBody": "finding {LEVEL} Pangrams in Spelling Bee.",
+   "imageUrl": "/assets/badges/svgs/sb_milestone_pangrams_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_milestone_pangrams_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_milestone_pangrams_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": false,
+   "isEarnableMidGame": true
+  },
+  {
+   "uniqueId": "sb7",
+   "badge_type": "milestone",
+   "games": [
+    "spelling_bee"
+   ],
+   "levels": [
+    1,
+    5,
+    10,
+    15,
+    20,
+    25,
+    35,
+    50,
+    75,
+    100,
+    125,
+    150,
+    200
+   ],
+   "displayName": "Pangram First",
+   "descriptionBody": "finding the Pangram as your first word in Spelling Bee {LEVEL} times.",
+   "descriptionBodySingular": "finding the Pangram as your first word in Spelling Bee {LEVEL} time.",
+   "imageUrl": "/assets/badges/svgs/sb_milestone_pangram-first_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_milestone_pangram-first_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_milestone_pangram-first_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": false,
+   "isEarnableMidGame": true
+  },
+  {
+   "uniqueId": "sb8",
+   "badge_type": "milestone",
+   "games": [
+    "spelling_bee"
+   ],
+   "levels": [
+    1,
+    10,
+    25,
+    50,
+    100,
+    150,
+    200,
+    300,
+    400,
+    500,
+    650,
+    800,
+    1000
+   ],
+   "displayName": "Long Word",
+   "descriptionBody": "finding {LEVEL} words in Spelling Bee that are 10+ letters long.",
+   "descriptionBodySingular": "finding {LEVEL} word in Spelling Bee that is 10+ letters long.",
+   "imageUrl": "/assets/badges/svgs/sb_milestone_long-word_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_milestone_long-word_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_milestone_long-word_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": false,
+   "isEarnableMidGame": true
+  },
+  {
+   "uniqueId": "sb9",
+   "badge_type": "holiday",
+   "games": [
+    "spelling_bee"
+   ],
+   "levels": [
+    2026
+   ],
+   "displayName": "New Year Hat",
+   "descriptionBody": "reaching the Genius rank in Spelling Bee on January 1, {LEVEL}.",
+   "imageUrl": "/assets/badges/svgs/sb_holiday_new-years_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_holiday_new-years_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_holiday_new-years_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": true
+  },
+  {
+   "uniqueId": "sb10",
+   "badge_type": "holiday",
+   "games": [
+    "spelling_bee"
+   ],
+   "levels": [
+    2025,
+    2026
+   ],
+   "displayName": "Halloween Hat",
+   "descriptionBody": "reaching the Genius rank in Spelling Bee on October 31, {LEVEL}.",
+   "imageUrl": "/assets/badges/svgs/sb_holiday_halloween_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_holiday_halloween_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_holiday_halloween_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": true
+  },
+  {
+   "uniqueId": "sb11",
+   "badge_type": "holiday",
+   "games": [
+    "spelling_bee"
+   ],
+   "levels": [
+    2026
+   ],
+   "displayName": "Valentine Hat",
+   "descriptionBody": "reaching the Genius rank in Spelling Bee on February 14, {LEVEL}.",
+   "imageUrl": "/assets/badges/svgs/sb_holiday_valentines-day_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_holiday_valentines-day_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_holiday_valentines-day_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": true
+  },
+  {
+   "uniqueId": "sb12",
+   "badge_type": "holiday",
+   "games": [
+    "spelling_bee"
+   ],
+   "displayName": "April Fools’ Hat",
+   "descriptionBody": "reaching the Genius rank in Spelling Bee on April 1, {LEVEL}.",
+   "imageUrl": "/assets/badges/svgs/sb_holiday_april-fools_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/sb_holiday_april-fools_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/sb_holiday_april-fools_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": true
+  },
+  {
+   "uniqueId": "st1",
+   "badge_type": "milestone",
+   "games": [
+    "strands"
+   ],
+   "levels": [
+    1,
+    5,
+    10,
+    15,
+    25,
+    50,
+    75,
+    100,
+    150,
+    200,
+    250,
+    350,
+    500
+   ],
+   "displayName": "Solved Without Hints",
+   "descriptionBody": "completing {LEVEL} puzzles without the use of hints.",
+   "descriptionBodySingular": "completing {LEVEL} puzzle without the use of hints.",
+   "imageUrl": "/assets/badges/svgs/st_milestone_solved-without-hints_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/st_milestone_solved-without-hints_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/st_milestone_solved-without-hints_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "st2",
+   "badge_type": "streak",
+   "games": [
+    "strands"
+   ],
+   "levels": [
+    7,
+    14,
+    30,
+    60,
+    100,
+    150,
+    250,
+    365,
+    500,
+    750,
+    1000
+   ],
+   "checkpoints": [
+    2,
+    3,
+    5,
+    8,
+    10,
+    12,
+    18,
+    21,
+    25,
+    35,
+    45,
+    50,
+    70,
+    80,
+    90,
+    110,
+    125,
+    140,
+    175,
+    200,
+    225,
+    275,
+    300,
+    330,
+    350
+   ],
+   "displayName": "{LEVEL}-Day Streak",
+   "descriptionBody": "completing {LEVEL} consecutive daily Strands puzzles without missing a day.",
+   "descriptionBodySingular": "completing {LEVEL} consecutive daily Strands puzzle without missing a day.",
+   "imageUrl": "/assets/badges/svgs/st_streak_streak_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/streak_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/streak_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "st3",
+   "badge_type": "milestone",
+   "games": [
+    "strands"
+   ],
+   "levels": [
+    1,
+    5,
+    10,
+    15,
+    20,
+    25,
+    35,
+    50,
+    75,
+    100,
+    125,
+    150,
+    200
+   ],
+   "displayName": "Spangram First",
+   "descriptionBody": "finding the Spangram as your first word in Strands {LEVEL} times.",
+   "descriptionBodySingular": "finding the Spangram as your first word in Strands {LEVEL} time.",
+   "imageUrl": "/assets/badges/svgs/st_milestone_spangram-first_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/st_milestone_spangram-first_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/st_milestone_spangram-first_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "st4",
+   "badge_type": "milestone",
+   "games": [
+    "strands"
+   ],
+   "levels": [
+    25,
+    50,
+    75,
+    100,
+    250,
+    500,
+    750,
+    1000,
+    1250,
+    1500,
+    2000,
+    2500,
+    5000
+   ],
+   "displayName": "Found Theme Words",
+   "descriptionBody": "finding {LEVEL} theme words across all Strands puzzles. This includes the spangram.",
+   "imageUrl": "/assets/badges/svgs/st_milestone_found-theme-words_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/st_milestone_found-theme-words_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/st_milestone_found-theme-words_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "wr1",
+   "badge_type": "challenge",
+   "games": [
+    "wordleV2"
+   ],
+   "displayName": "Hard Mode",
+   "descriptionBody": "successfully completing a Wordle puzzle in Hard Mode. Turn on Hard Mode in Wordle's settings menu.",
+   "imageUrl": "/assets/badges/svgs/wr_challenge_hard-mode.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/wr_challenge_hard-mode_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/wr_challenge_hard-mode_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "wr2",
+   "badge_type": "progress",
+   "games": [
+    "wordleV2"
+   ],
+   "displayName": "Wordle in 1",
+   "descriptionBody": "solving a Wordle puzzle in 1 guess.",
+   "imageUrl": "/assets/badges/svgs/wr_progress_wordle-in-1.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/wr_progress_wordle-in-1_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/wr_progress_wordle-in-1_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "wr3",
+   "badge_type": "progress",
+   "games": [
+    "wordleV2"
+   ],
+   "displayName": "Wordle in 2",
+   "descriptionBody": "solving a Wordle puzzle in 2 guesses.",
+   "imageUrl": "/assets/badges/svgs/wr_progress_wordle-in-2.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/wr_progress_wordle-in-2_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/wr_progress_wordle-in-2_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "wr4",
+   "badge_type": "milestone",
+   "games": [
+    "wordleV2"
+   ],
+   "levels": [
+    1000
+   ],
+   "displayName": "1000 Wordles",
+   "descriptionBody": "completing 1000 Wordle puzzles, on any date, win or lose.",
+   "imageUrl": "/assets/badges/svgs/wr_milestone_puzzles_1000.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/wr_milestone_puzzles_1000_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/wr_milestone_puzzles_1000_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "wr5",
+   "badge_type": "milestone",
+   "games": [
+    "wordleV2"
+   ],
+   "levels": [
+    1500
+   ],
+   "displayName": "1500 Wordles",
+   "descriptionBody": "completing 1500 Wordle puzzles, on any date, win or lose.",
+   "imageUrl": "/assets/badges/svgs/wr_milestone_puzzles_1500.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/wr_milestone_puzzles_1500_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/wr_milestone_puzzles_1500_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "wr6",
+   "badge_type": "streak",
+   "games": [
+    "wordleV2"
+   ],
+   "levels": [
+    7,
+    14,
+    30,
+    60,
+    100,
+    150,
+    250,
+    365,
+    500,
+    750,
+    1000
+   ],
+   "checkpoints": [
+    2,
+    3,
+    5,
+    8,
+    10,
+    12,
+    18,
+    21,
+    25,
+    35,
+    45,
+    50,
+    70,
+    80,
+    90,
+    110,
+    125,
+    140,
+    175,
+    200,
+    225,
+    275,
+    300,
+    330,
+    350,
+    400,
+    425,
+    450,
+    475,
+    550,
+    600,
+    650,
+    700,
+    800,
+    850,
+    900,
+    950,
+    975
+   ],
+   "displayName": "{LEVEL}-day Streak",
+   "descriptionBody": "completing {LEVEL} consecutive daily Wordle puzzles without losing.",
+   "imageUrl": "/assets/badges/svgs/wr_streak_streak_{LEVEL}.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/streak_{LEVEL}_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/streak_{LEVEL}_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "wr7",
+   "badge_type": "progress",
+   "games": [
+    "wordleV2"
+   ],
+   "displayName": "Sea of Greens",
+   "descriptionBody": "successfully completing a Wordle puzzle while only getting green and gray letters (or orange and gray letters if playing in high contrast mode).",
+   "imageUrl": "/assets/badges/svgs/wr_progress_sea-of-greens.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/wr_progress_sea-of-greens_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/wr_progress_sea-of-greens_unearned_dark.svg",
+   "requiresSubscription": false
+  },
+  {
+   "uniqueId": "wr8",
+   "badge_type": "milestone",
+   "games": [
+    "wordleV2"
+   ],
+   "levels": [
+    5
+   ],
+   "checkpoints": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "displayName": "5-for-5 Challenge",
+   "descriptionBody": "successfully completing all 5 Wordle puzzles from June 15 - June 19, 2026, in celebration of 5 years of the game.",
+   "imageUrl": "/assets/badges/svgs/wr_milestone_wordle-5.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/wr_milestone_wordle-5_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/wr_milestone_wordle-5_unearned_dark.svg",
+   "requiresSubscription": true
+  },
+  {
+   "uniqueId": "wr9",
+   "badge_type": "challenge",
+   "games": [
+    "wordleV2"
+   ],
+   "displayName": "5th Birthday",
+   "descriptionBody": "successfully completing Wordle’s 5th birthday puzzle on June 19, 2026.",
+   "imageUrl": "/assets/badges/svgs/wr_challenge_wordle-5.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/wr_challenge_wordle-5_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/wr_challenge_wordle-5_unearned_dark.svg",
+   "requiresSubscription": true
+  },
+  {
+   "uniqueId": "wr10",
+   "badge_type": "progress",
+   "games": [
+    "wordleV2"
+   ],
+   "displayName": "Beat the Bot",
+   "descriptionBody": "successfully completing a Wordle puzzle in fewer steps than the standard Wordle Bot.",
+   "imageUrl": "/assets/badges/svgs/wr_progress_beat-the-bot.svg",
+   "imageUrlUnearned": "/assets/badges/svgs/wr_progress_beat-the-bot_unearned.svg",
+   "imageUrlUnearnedDarkMode": "/assets/badges/svgs/wr_progress_beat-the-bot_unearned_dark.svg",
+   "requiresSubscription": true,
+   "linkText": "Learn more about how it is calculated.",
+   "linkURL": "https://help.nytimes.com/24611727334932-Wordle"
+  }
+ ]
+}

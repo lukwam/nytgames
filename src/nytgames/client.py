@@ -20,6 +20,7 @@ from nytgames.exceptions import NYTGamesParseError
 from nytgames.exceptions import NYTGamesRateLimitError
 from nytgames.models import ArchiveGame
 from nytgames.models import ArchivePuzzle
+from nytgames.models import BadgeGame
 from nytgames.models import ConnectionsLatest
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
@@ -35,6 +36,7 @@ from nytgames.models import SpellingBeeLatest
 from nytgames.models import SpellingBeePuzzle
 from nytgames.models import StrandsLatest
 from nytgames.models import StrandsPuzzle
+from nytgames.models import TrophyCase
 from nytgames.models import WordleBotAnalysis
 from nytgames.models import WordleBotSummary
 from nytgames.models import WordlePuzzle
@@ -47,6 +49,7 @@ WORDLEBOT_URL = "https://www.nytimes.com/svc/int/run/cubby/public-api/v1/respons
 WORDLEBOT_SUMMARY_URL = "https://static01.nyt.com/newsgraphics/2022/wordlebot/{solution}-{date}/summary.json"
 # NYT's games archive returns at most 31 days per request.
 ARCHIVE_DAYS = 31
+BADGE_GAMES = tuple(game.value for game in BadgeGame)
 USER_AGENT = f"nytimes-games/{__version__} (+https://github.com/lukwam/nytimes-games)"
 
 Cookies = Mapping[str, str] | Iterable[Mapping[str, Any]] | str | None
@@ -263,6 +266,30 @@ class NYTGamesClient:
         middle = start + (end - start) // 2
         return (self._archive_window(game, start, middle)
                 + self._archive_window(game, middle + datetime.timedelta(days=1), end))
+
+    # Badges
+    def trophy_case(self, game: BadgeGame | str) -> TrophyCase:
+        """Return every badge for a game, earned or not, with your progress.
+
+        `game` is wordleV2, connections, strands or spelling_bee. Requires
+        the NYT-S cookie. This is the NYT Games app's trophy case; the saved
+        game state methods only include the three badges on your shelf.
+        """
+        game = BadgeGame(game).value
+        return TrophyCase(**self._get(f"/svc/games/badges/trophy-case/{game}"))
+
+    def badges(self, games: Iterable[BadgeGame | str] = BADGE_GAMES) -> TrophyCase:
+        """Return every badge for each game (default: all four), in one
+        TrophyCase keyed by game. Makes one request per game.
+
+        Names, descriptions and artwork are in each badge's `info`.
+        """
+        result = TrophyCase()
+        for game in games:
+            case = self.trophy_case(game)
+            result.user_id = result.user_id or case.user_id
+            result.trophies.update(case.trophies)
+        return result
 
     # Connections
     def connections(self, date: str) -> ConnectionsPuzzle:
