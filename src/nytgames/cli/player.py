@@ -33,6 +33,7 @@ def register(app: typer.Typer) -> None:
     app.command("stats")(stats)
     app.command("today")(today)
     app.command("wordlebot")(wordlebot)
+    app.command("badges")(badges)
     history = typer.Typer(help="Your results for a range of dates.", no_args_is_help=True)
     history.command("crossword")(history_crossword)
     history.command("wordle")(history_wordle)
@@ -400,3 +401,44 @@ def wordlebot(
                 yield Text.assemble((f"{strategy}: ", "bold"), " → ".join(w.upper() for w in path))
 
     emit(data, fmt, table)
+
+
+class BadgeGame(str, enum.Enum):
+    all = "all"
+    wordle = "wordle"
+    connections = "connections"
+    strands = "strands"
+    bee = "bee"
+
+
+BADGE_GAMES = {BadgeGame.wordle: "wordleV2", BadgeGame.connections: "connections",
+               BadgeGame.strands: "strands", BadgeGame.bee: "spelling_bee"}
+
+
+def badges(
+    game: Annotated[BadgeGame, typer.Argument(help="A game, or all.")] = BadgeGame.all,
+    earned: Annotated[bool, typer.Option("--earned", help="Only show badges you've earned.")] = False,
+    fmt: FormatOption = None,
+) -> None:
+    """Show your badges, earned or not, with your progress."""
+    games = list(BADGE_GAMES.values()) if game == BadgeGame.all else [BADGE_GAMES[game]]
+    rows = views.badge_rows(state.client().badges(games))
+    if earned:
+        rows = [row for row in rows if row["earned"]]
+
+    def table(data):
+        t = Table(title="Your NYT Games badges", title_justify="left", header_style="bold")
+        t.add_column("")
+        t.add_column("Game")
+        t.add_column("Badge")
+        t.add_column("Progress", justify="right")
+        t.add_column("Next", justify="right")
+        t.add_column("Earned")
+        for row in data:
+            t.add_row("[green]✔[/green]" if row["earned"] else "[dim]·[/dim]", row["game"], row["name"],
+                      "" if row["progress"] is None else str(row["progress"]),
+                      "" if row["next_level"] is None else str(row["next_level"]),
+                      row["last_earned"] or "")
+        yield t
+
+    emit(rows, fmt, table)

@@ -70,7 +70,7 @@ Changelog = "https://github.com/lukwam/nytimes-games/blob/main/CHANGELOG.md"
 where = ["src"]
 
 [tool.setuptools.package-data]
-nytgames = ["py.typed"]
+nytgames = ["py.typed", "badges.json"]
 
 [tool.setuptools.dynamic]
 version = { attr = "nytgames.__version__" }

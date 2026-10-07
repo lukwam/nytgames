@@ -9,6 +9,7 @@ from mcp import Client
 from nytgames import NYTGamesAuthenticationError
 from nytgames import NYTGamesNotFoundError
 from nytgames import mcp_server
+from nytgames.models import TrophyCase
 from nytgames.models import WordleBotSummary
 from tests.test_cli_tables import CONNECTIONS
 from tests.test_cli_tables import STATS
@@ -53,7 +54,7 @@ def test_tools_are_listed_with_descriptions_and_annotations():
     assert set(tools) == {
         "wordle", "connections", "strands", "spelling_bee", "letter_boxed", "crossword", "wordlebot_summary",
         "puzzle_archive", "stats", "today", "crossword_history", "wordle_history", "spelling_bee_history",
-        "wordlebot", "export_crossword",
+        "wordlebot", "badges", "export_crossword",
     }
     for name, t in tools.items():
         assert t.description and len(t.description) > 40, name
@@ -124,3 +125,11 @@ def test_cookie_errors_never_show_values(monkeypatch):
     monkeypatch.setenv("NYT_COOKIES", "NYT-S=SECRET\nVALUE")
     result = call("wordle")
     assert result.is_error and "SECRET" not in result.content[0].text
+
+
+def test_badges(nyt):
+    nyt.badges.return_value = TrophyCase(trophies={"wordleV2": {"earned": [{"id": "wr6", "badge_type": "streak",
+                                                                            "levels": [7, 14], "earned_at": [1]}]}})
+    rows = data(call("badges", {"game": "wordle"}))
+    assert [(r["game"], r["name"], r["next_level"]) for r in rows] == [("Wordle", "7-day Streak", 14)]
+    nyt.badges.assert_called_once_with(["wordleV2"])

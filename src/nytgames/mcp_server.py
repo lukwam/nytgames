@@ -26,6 +26,7 @@ from nytgames import NYTGamesRateLimitError
 from nytgames import __version__
 from nytgames import formats
 from nytgames import views
+from nytgames.client import BADGE_GAMES
 from nytgames.cli.config import Config
 from nytgames.cli.dates import parse_date
 from nytgames.cli import dates
@@ -41,7 +42,7 @@ except ImportError as err:  # pragma: no cover
 INSTRUCTIONS = """\
 Tools for the New York Times Games: Wordle, Connections, Strands, Spelling
 Bee, Letter Boxed and the Daily, Mini, Midi and Bonus crosswords, plus the
-user's own stats, progress and WordleBot analysis.
+user's own stats, progress, badges and WordleBot analysis.
 
 Dates are YYYY-MM-DD, "today", "yesterday", "tomorrow" or a weekday name.
 
@@ -49,7 +50,7 @@ Spoilers: puzzle tools hide answers unless include_answers is true. Leave it
 false when the user is still solving (for example when they ask for a hint),
 and set it to true only when they want the answers or analysis that needs them.
 
-The user's own data (stats, today, histories, wordlebot, saved progress)
+The user's own data (stats, today, histories, wordlebot, badges, saved progress)
 needs their NYT cookie. If a tool says cookies are missing or expired, tell
 the user to run `nytg auth login` or set NYT_COOKIES.
 """
@@ -280,6 +281,15 @@ def wordlebot() -> dict[str, Any]:
     puzzle = nyt.wordle(when.isoformat())
     summary = nyt.wordlebot_summary(when.isoformat(), solution=puzzle.solution)
     return views.wordlebot_view(when, puzzle, summary, nyt.wordlebot(), answers=False)
+
+
+@tool()
+def badges(game: Literal["wordle", "connections", "strands", "spelling_bee"] | None = None) -> list[dict[str, Any]]:
+    """Get the user's badges for one game or all four, earned or not: name, description, level,
+    next level, progress, when last earned and artwork URL. Needs cookies.
+    """
+    games = {"wordle": "wordleV2"}.get(game, game) if game else None
+    return views.badge_rows(client().badges([games] if games else BADGE_GAMES))
 
 
 # Files

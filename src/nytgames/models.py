@@ -5,10 +5,14 @@ from typing import Annotated
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import TYPE_CHECKING
 from pydantic import BaseModel
 from pydantic import BeforeValidator
 from pydantic import ConfigDict
 from pydantic import Field
+
+if TYPE_CHECKING:
+    from nytgames.badges import BadgeInfo
 
 
 class NYTModel(BaseModel):
@@ -85,11 +89,122 @@ class ConnectionsGameState(NYTModel):
     version: str | None = None
 
 
+class Badge(NYTModel):
+    """A badge and your progress toward it.
+
+    `badge_type` is progress, milestone, streak, challenge or holiday. Fields
+    vary by type, so most are optional. `levels` are the thresholds for
+    tiered badges (years, for holiday badges), and `earned_at` has a Unix
+    timestamp for each level reached. Holiday badges list the years earned
+    in `earned_years`.
+
+    Names, descriptions and artwork come from `info` (see nytgames.badges).
+    """
+    id: str
+    badge_type: str | None = None
+    games: List[str] = []
+    levels: List[int] = []
+    progress: int | None = None
+    earned_at: List[int] = []
+    last_earned_level: int | None = None
+    earned_years: List[int] = []
+    earned: bool | None = None
+
+    @property
+    def is_earned(self) -> bool:
+        """Whether you've earned this badge (at least its first level)."""
+        if self.badge_type == "holiday":
+            return bool(self.earned or self.earned_years)
+        return bool(self.earned or self.earned_at or self.last_earned_level)
+
+    @property
+    def level(self) -> int | None:
+        """The highest level you've earned (the latest year, for holiday badges)."""
+        if self.badge_type == "holiday":
+            return max(self.earned_years, default=None)
+        if self.last_earned_level is not None:
+            return self.last_earned_level
+        if self.earned_at and self.levels:
+            return self.levels[min(len(self.earned_at), len(self.levels)) - 1]
+        return None
+
+    @property
+    def next_level(self) -> int | None:
+        """The next level to earn, or None if you've earned them all."""
+        if self.badge_type == "holiday":
+            return next((year for year in self.levels if year not in self.earned_years), None)
+        if not self.levels:
+            return None
+        current = self.level
+        return next((level for level in self.levels if current is None or level > current), None)
+
+    @property
+    def earned_dates(self) -> List[datetime.datetime]:
+        """`earned_at` as UTC datetimes."""
+        return [datetime.datetime.fromtimestamp(t, datetime.timezone.utc) for t in self.earned_at]
+
+    @property
+    def info(self) -> "BadgeInfo | None":
+        """The badge's name, description and artwork, or None for badges
+        nytgames doesn't know yet."""
+        from nytgames.badges import badge_info
+        return badge_info(self.id)
+
+    @property
+    def name(self) -> str:
+        """The badge's name at your level (or its first level), or its ID if unknown."""
+        info = self.info
+        return info.name(self.level) if info else self.id
+
+
+def badge_list(value: Any) -> Any:
+    """Return a trophy shelf as a list of badges. Empty shelves can be `{}`."""
+    if isinstance(value, dict):
+        return [badge for badge in value.values() if isinstance(badge, dict)]
+    return [] if value is None else value
+
+
+TrophyShelf = Annotated[List[Badge], BeforeValidator(badge_list)]
+
+
+class BadgeGame(str, Enum):
+    """Games with badges, by their NYT game name."""
+    wordle = "wordleV2"
+    connections = "connections"
+    strands = "strands"
+    spelling_bee = "spelling_bee"
+
+
+class TrophyCaseGame(NYTModel):
+    """One game's badges in the trophy case.
+
+    `unearned` means not fully earned: tiered badges with levels still to
+    reach are in `unearned` (and can be in `earned` too), with their
+    `earned_at` and `last_earned_level`. Use `Badge.is_earned` and
+    `Badge.level` rather than the list a badge is in.
+    """
+    earned: List[Badge] = []
+    unearned: List[Badge] = []
+
+    @property
+    def badges(self) -> List[Badge]:
+        """Every badge once, earned ones first."""
+        seen = {badge.id for badge in self.earned}
+        return [*self.earned, *(badge for badge in self.unearned if badge.id not in seen)]
+
+
+class TrophyCase(NYTModel):
+    """Every badge for one or more games, earned or not, keyed by game."""
+    user_id: int | None = None
+    trophies: Dict[str, TrophyCaseGame] = {}
+
+
 class ConnectionsLatest(NYTModel):
     """Connections Game States."""
     player: "Player | None" = None
     states: List[ConnectionsGameState]
     user_id: int
+    badges_trophy_shelf: TrophyShelf = []
 
 
 class CrosswordGameData(NYTModel):
@@ -117,6 +232,7 @@ class CrosswordGame(NYTModel):
     player: "Player | None" = None
     states: List[CrosswordGameState]
     user_id: int
+    badges_trophy_shelf: TrophyShelf = []
 
 
 def number_or_text(value: Any) -> Any:
@@ -558,6 +674,7 @@ class SpellingBeeLatest(NYTModel):
     user_id: int
     states: List[SpellingBeeLatestState]
     player: Player
+    badges_trophy_shelf: TrophyShelf = []
 
 
 class StrandsPuzzle(NYTModel):
@@ -610,6 +727,7 @@ class StrandsLatest(NYTModel):
     player: Player | None = None
     states: List[StrandsGameState]
     user_id: int
+    badges_trophy_shelf: TrophyShelf = []
 
 
 class WordlePuzzle(NYTModel):
@@ -667,6 +785,7 @@ class WordlePuzzlesList(NYTModel):
     player: Player | None = None
     states: List[WordleGameState]
     user_id: int
+    badges_trophy_shelf: TrophyShelf = []
 
 
 CrosswordGame.model_rebuild()

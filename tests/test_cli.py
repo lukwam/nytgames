@@ -26,6 +26,7 @@ from nytgames.models import CrosswordGame
 from nytgames.models import CrosswordPuzzlesList
 from nytgames.models import Player
 from nytgames.models import StrandsLatest
+from nytgames.models import TrophyCase
 from nytgames.models import WordlePuzzle
 from nytgames.models import WordlePuzzlesList
 
@@ -429,3 +430,20 @@ def test_archive_future_crosswords_are_fetched_by_date(client, tmp_path):
     assert result["saved"] == 1
     client.crossword.assert_called_once_with("mini", "2026-10-05")
     client.archive.assert_not_called()
+
+
+def test_badges(client):
+    client.badges.return_value = TrophyCase(trophies={"strands": {
+        "earned": [{"id": "st4", "badge_type": "milestone", "levels": [25, 50, 75], "progress": 60,
+                    "earned_at": [1759700000, 1759800000], "last_earned_level": 50}],
+        "unearned": [{"id": "st4"}, {"id": "st2", "badge_type": "streak", "levels": [7, 14], "progress": 3}],
+    }})
+    rows = json.loads(run("badges", "strands", "-f", "json").stdout)
+    assert [(r["name"], r["earned"], r["level"], r["next_level"], r["last_earned"]) for r in rows] == [
+        ("Found Theme Words", True, 50, 75, "2025-10-07"), ("7-Day Streak", False, None, 7, None)]
+    client.badges.assert_called_once_with(["strands"])
+
+    earned = json.loads(run("badges", "--earned", "-f", "json").stdout)
+    assert [r["id"] for r in earned] == ["st4"]
+    assert client.badges.call_args.args[0] == ["wordleV2", "connections", "strands", "spelling_bee"]
+    assert "Found Theme Words" in run("badges").stdout

@@ -26,6 +26,7 @@ import nytgames
 from nytgames import NYTGamesClient
 from nytgames import formats
 from nytgames import spelling_bee_hints
+from nytgames.client import BADGE_GAMES
 
 NYT_TIMEZONE = zoneinfo.ZoneInfo("America/New_York")
 
@@ -142,6 +143,13 @@ def user_checks(client: NYTGamesClient) -> list[tuple[str, Callable[[], str]]]:
         analysis = client.wordlebot()  # None until WordleBot is opened today
         return "today's analysis" if analysis else "no analysis yet today"
 
+    def badges() -> str:
+        case = client.badges()
+        assert set(case.trophies) == set(BADGE_GAMES)
+        unknown = {b.id for game in case.trophies.values() for b in game.badges if not b.info}
+        assert not unknown, f"badges missing from badges.json: {sorted(unknown)}"
+        return f"{sum(len(game.badges) for game in case.trophies.values())} badges"
+
     def game_states(game: str, latest: Callable) -> Callable[[], str]:
         def check() -> str:
             last = datetime.datetime.now(NYT_TIMEZONE).date()
@@ -150,7 +158,7 @@ def user_checks(client: NYTGamesClient) -> list[tuple[str, Callable[[], str]]]:
             return f"{len(latest(ids).states)} of {len(ids)} recent games played"
         return check
 
-    return [("Player stats", stats), ("WordleBot", wordlebot),
+    return [("Player stats", stats), ("WordleBot", wordlebot), ("Badges", badges),
             ("Connections states", game_states("connections", client.connections_latest)),
             ("Strands states", game_states("strands", client.strands_latest))]
 

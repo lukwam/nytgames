@@ -301,3 +301,17 @@ def test_connections_and_strands_latest(nyt, game, game_data):
     assert state["game_data"].get("newField") == game_data.get("newField")
     assert nyt.call_args.args[0] == f"https://www.nytimes.com/svc/games/state/{game}/latests"
     assert nyt.call_args.kwargs["params"] == {"puzzle_ids": "1315,1314"}
+
+
+def test_badges(nyt):
+    """Badges come from the trophy case, one request per game."""
+    nyt.return_value = mock_response({"user_id": 123, "trophies": {"connections": {
+        "earned": [{"id": "cx7", "badge_type": "progress", "progress": 2, "earned_at": [1], "earned": True}],
+        "unearned": []}}})
+    response = client.get("/badges/connections")
+    assert response.status_code == 200
+    assert response.json()["trophies"]["connections"]["earned"][0]["id"] == "cx7"
+    assert nyt.call_args.args[0] == "https://www.nytimes.com/svc/games/badges/trophy-case/connections"
+    assert client.get("/badges/wordle").status_code == 422
+    assert client.get("/badges").status_code == 200
+    assert nyt.call_count == 5

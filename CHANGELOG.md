@@ -4,6 +4,29 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.9.3
+
+### Added
+
+- Badges. `badges(games)` and `trophy_case(game)` return every Wordle,
+  Connections, Strands and Spelling Bee badge, earned or not, with your
+  progress, from the games app's trophy case
+  (`/svc/games/badges/trophy-case/{game}`, needs cookies). `unearned`
+  means not fully earned, so it includes tiered badges with levels still to
+  reach; `TrophyCaseGame.badges` lists each badge once.
+- `badges_trophy_shelf` on `wordle_latest()`, `connections_latest()`,
+  `strands_latest()`, `spelling_bee_latest()` and `crossword_game()`: the
+  three badges NYT features for the game, which were dropped before.
+  Requested by nyt-puzzles.
+- `Badge`, a lenient model (fields vary by badge type), with `is_earned`,
+  `level`, `next_level`, `earned_dates` and `name`.
+- `nytgames.badges`: names, descriptions and SVG artwork URLs for all 35
+  badges, at any level, from a copy of the games app's table (NYT doesn't
+  serve it from an API). `Badge.info` returns a badge's entry, or None for
+  new badges not in the copy yet; the daily live check flags those.
+- `nytg badges [game] [--earned]`, the `badges` MCP tool, and `GET /badges`
+  and `GET /badges/{game}` in the API.
+
 ## 0.9.2
 
 ### Added
