@@ -178,8 +178,10 @@ class BadgeGame(str, Enum):
 class TrophyCaseGame(NYTModel):
     """One game's badges in the trophy case.
 
-    Badges that are partly earned (tiered, with levels still to reach) are
-    in both `earned` and `unearned`.
+    `unearned` means not fully earned: tiered badges with levels still to
+    reach are in `unearned` (and can be in `earned` too), with their
+    `earned_at` and `last_earned_level`. Use `Badge.is_earned` and
+    `Badge.level` rather than the list a badge is in.
     """
     earned: List[Badge] = []
     unearned: List[Badge] = []

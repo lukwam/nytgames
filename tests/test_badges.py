@@ -46,6 +46,9 @@ def test_trophy_shelf(shelf, ids):
     (SB11, False, None, 2026, "Valentine Hat"),
     ({**SB11, "earned_years": [2026]}, True, 2026, None, "Valentine Hat"),
     ({"id": "sb8", "badge_type": "milestone", "levels": [1, 10, 25], "earned_at": [1]}, True, 1, 10, "Long Word"),
+    # Trophy case: partly earned tiered badges are listed as unearned, without `earned`.
+    ({"id": "sb4", "badge_type": "milestone", "levels": [5, 10, 750, 1000], "progress": 992,
+      "earned_at": [1, 2, 3], "last_earned_level": 750}, True, 750, 1000, "Genius"),
     ({"id": "zz99", "newField": 1}, False, None, None, "zz99"),
 ])
 def test_badge_progress(raw, earned, level, next_level, name):

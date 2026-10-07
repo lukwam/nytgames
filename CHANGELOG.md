@@ -11,9 +11,9 @@ versions may include breaking changes.
 - Badges. `badges(games)` and `trophy_case(game)` return every Wordle,
   Connections, Strands and Spelling Bee badge, earned or not, with your
   progress, from the games app's trophy case
-  (`/svc/games/badges/trophy-case/{game}`, needs cookies). Partly earned
-  tiered badges are in both `earned` and `unearned`; `badges` lists each
-  once.
+  (`/svc/games/badges/trophy-case/{game}`, needs cookies). `unearned`
+  means not fully earned, so it includes tiered badges with levels still to
+  reach; `TrophyCaseGame.badges` lists each badge once.
 - `badges_trophy_shelf` on `wordle_latest()`, `connections_latest()`,
   `strands_latest()`, `spelling_bee_latest()` and `crossword_game()`: the
   three badges NYT features for the game, which were dropped before.
