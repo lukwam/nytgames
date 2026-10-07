@@ -66,50 +66,50 @@ def wordle(date: DateArgument = "today", answers: AnswersOption = False, fmt: Fo
 def connections(date: DateArgument = "today", answers: AnswersOption = False, fmt: FormatOption = None) -> None:
     """Show a Connections puzzle: the board, or the groups with --answers."""
     data = views.connections_view(state.client().connections(date_arg(date).isoformat()), answers)
+    emit(data, fmt, connections_table)
 
-    def table(data):
-        yield Text(f"Connections {data['date']}", style="bold")
-        if "categories" in data:
-            grid = Table(show_header=False, box=None, padding=(0, 1))
-            for color, category in zip(CONNECTIONS_COLORS, data["categories"]):
-                grid.add_row(Text(f" {category['title']} ", style=color),
-                             ", ".join(category["cards"]))
-        else:
-            grid = Table(show_header=False, show_lines=True)
-            for row in data["board"]:
-                grid.add_row(*row)
-        yield grid
 
-    emit(data, fmt, table)
+def connections_table(data):
+    yield Text(f"{data.get('title') or 'Connections'} {data['date']}", style="bold")
+    if "categories" in data:
+        grid = Table(show_header=False, box=None, padding=(0, 1))
+        for color, category in zip(CONNECTIONS_COLORS, data["categories"]):
+            grid.add_row(Text(f" {category['title']} ", style=color),
+                         ", ".join(category["cards"]))
+    else:
+        grid = Table(show_header=False, show_lines=True)
+        for row in data["board"]:
+            grid.add_row(*row)
+    yield grid
 
 
 def strands(date: DateArgument = "today", answers: AnswersOption = False, fmt: FormatOption = None) -> None:
     """Show a Strands puzzle: the theme and board, and the words with --answers."""
     data = views.strands_view(state.client().strands(date_arg(date).isoformat()), answers)
+    emit(data, fmt, strands_table)
 
-    def table(data):
-        styles = {}
-        word_styles = [f"bold white on {color}" for color in
-                       ("blue", "dark_cyan", "purple4", "dark_green", "deep_pink4", "dark_red")]
-        for coords in data.get("theme_coords", {}).values():
-            # Give each word a color that none of its neighboring letters have.
-            neighbors = {styles.get((r + dr, c + dc)) for r, c in coords
-                         for dr in (-1, 0, 1) for dc in (-1, 0, 1)}
-            style = next((s for s in word_styles if s not in neighbors), word_styles[0])
-            styles.update({tuple(c): style for c in coords})
-        styles.update({tuple(c): "bold black on yellow" for c in data.get("spangram_coords", [])})
-        yield Text(f"Strands {data['date']}: {data['clue']}", style="bold")
-        board = Text()
-        for r, row in enumerate(data["board"]):
-            for c, letter in enumerate(row):
-                board.append(f" {letter} ", style=styles.get((r, c), ""))
-            board.append("\n")
-        yield board
-        if "spangram" in data:
-            yield Text.assemble(("Spangram: ", "bold"), (data["spangram"], "yellow"))
-            yield Text.assemble(("Theme words: ", "bold"), ", ".join(data["theme_words"]))
 
-    emit(data, fmt, table)
+def strands_table(data):
+    styles = {}
+    word_styles = [f"bold white on {color}" for color in
+                   ("blue", "dark_cyan", "purple4", "dark_green", "deep_pink4", "dark_red")]
+    for coords in data.get("theme_coords", {}).values():
+        # Give each word a color that none of its neighboring letters have.
+        neighbors = {styles.get((r + dr, c + dc)) for r, c in coords
+                     for dr in (-1, 0, 1) for dc in (-1, 0, 1)}
+        style = next((s for s in word_styles if s not in neighbors), word_styles[0])
+        styles.update({tuple(c): style for c in coords})
+    styles.update({tuple(c): "bold black on yellow" for c in data.get("spangram_coords", [])})
+    yield Text(f"{data.get('title') or 'Strands'} {data['date']}: {data['clue']}", style="bold")
+    board = Text()
+    for r, row in enumerate(data["board"]):
+        for c, letter in enumerate(row):
+            board.append(f" {letter} ", style=styles.get((r, c), ""))
+        board.append("\n")
+    yield board
+    if "spangram" in data:
+        yield Text.assemble(("Spangram: ", "bold"), (data["spangram"], "yellow"))
+        yield Text.assemble(("Theme words: ", "bold"), ", ".join(data["theme_words"]))
 
 
 def bee(

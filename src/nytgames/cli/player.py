@@ -40,6 +40,7 @@ def register(app: typer.Typer) -> None:
     history.command("connections")(history_connections)
     history.command("strands")(history_strands)
     history.command("bee")(history_bee)
+    history.command("bonus")(history_bonus)
     app.add_typer(history, name="history")
 
 
@@ -333,6 +334,22 @@ def history_bee(start: FromOption = None, end: ToOption = None, fmt: FormatOptio
         for row in data:
             t.add_row(row["date"], Text(row["rank"], style="bold yellow" if row["rank"] == "Queen Bee" else ""),
                       f"{row['words']}/{row['total_words']}", f"{row['pangrams']}/{row['total_pangrams']}")
+        yield t
+
+    emit(rows, fmt, table)
+
+
+def history_bonus(start: FromOption = None, end: ToOption = None, fmt: FormatOption = None) -> None:
+    """Your results for the weekly Bonus Puzzles in a date range."""
+    first, last = date_window(start, end, "bonus")
+    rows = views.bonus_results(state.client(), first, last)
+
+    def table(data):
+        t = Table(title=f"Bonus Puzzles {first} to {last}", title_justify="left", header_style="bold")
+        for column in ("Week", "Puzzle", "Status", "Detail"):
+            t.add_column(column)
+        for row in data:
+            t.add_row(row["week"], row["title"], row["status"], row["detail"])
         yield t
 
     emit(rows, fmt, table)

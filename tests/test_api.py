@@ -315,3 +315,18 @@ def test_badges(nyt):
     assert client.get("/badges/wordle").status_code == 422
     assert client.get("/badges").status_code == 200
     assert nyt.call_count == 5
+
+
+def test_bonus_routes(nyt):
+    """Bonus routes use the bonus week, puzzle and game state endpoints."""
+    from tests.test_bonus import WEEK, WORDLE_IN_ONE
+    nyt.return_value = mock_response({"bonus_puzzles_week": WEEK})
+    assert client.get("/bonus/week/2026-10-07").json()["puzzles"][0]["slug"] == "2026-10-07-8"
+    nyt.return_value = mock_response(WORDLE_IN_ONE)
+    assert client.get("/bonus/wordle-in-one/2026-10-07-8").json()["rounds"][0]["start"] == "aaaaa"
+    assert nyt.call_args.args[0] == "https://www.nytimes.com/svc/wordle-in-one/v1/bonus/2026-10-07-8.json"
+    nyt.return_value = mock_response({**STATE_LATESTS, "states": []})
+    for path, game in (("wordle-in-one", "wordle_in_one"), ("connections", "connections_bonus"),
+                       ("strands", "strands_bonus")):
+        assert client.get(f"/bonus/{path}/latest?puzzle_ids=8").status_code == 200
+        assert nyt.call_args.args[0] == f"https://www.nytimes.com/svc/games/state/{game}/latests"

@@ -4,6 +4,33 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.9.4
+
+### Added
+
+- The weekly Bonus Puzzles (new on Wednesdays since 2026-08-26):
+  `bonus_week(date)` lists the week's drop that includes a date, with each
+  puzzle's title, byline, ID and slug, and `bonus_weeks(date_start,
+  date_end)` lists a range. `bonus_puzzle(listing)` fetches any of them:
+  `wordle_in_one(slug)` (new `WordleInOnePuzzle`: five rounds, each a
+  starting guess and a solution), `connections_bonus(slug)` (Connections
+  3x3), `strands_bonus(slug)` (Colorful Strands, with `themeColors` and
+  `themeEmojis`) and `crossword_by_id()` for the Mystery Mini, Easy Mode and
+  Special crosswords. Puzzles load without cookies. Requested by
+  nyt-puzzles.
+- Your bonus games: `wordle_in_one_latest(puzzle_ids)`,
+  `connections_latest(puzzle_ids, bonus=True)`,
+  `strands_latest(puzzle_ids, bonus=True)`, and
+  `crossword_game(puzzle_ids, "bonus")`, by the `id` in a week's listing.
+- `nytg bonus week|wordle-in-one|connections|strands|crossword` and
+  `nytg history bonus`; `bonus_week`, `bonus_puzzle` and `bonus_history`
+  MCP tools; and `/bonus/...` API routes.
+
+### Fixed
+
+- `ConnectionsPuzzle.board()` and `nytg connections` assumed a 4x4 board;
+  they now fit the puzzle (3x3 for Connections 3x3).
+
 ## 0.9.3
 
 ### Added

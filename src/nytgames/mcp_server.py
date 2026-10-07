@@ -142,6 +142,36 @@ def strands(date: str = "today", include_answers: bool = False) -> dict[str, Any
 
 
 @tool()
+def bonus_week(date: str = "today") -> dict[str, Any]:
+    """List the weekly Bonus Puzzles drop that includes a date (drops come out on Wednesdays from
+    2026-08-26): Wordle in 1, Connections 3x3, Colorful Strands and bonus crosswords, with titles,
+    bylines, IDs and slugs.
+    """
+    return views.bonus_week_view(client().bonus_week(day(date).isoformat()))
+
+
+@tool()
+def bonus_puzzle(
+    game: Literal["wordle-in-one", "connections", "strands", "mini", "easy", "special"],
+    date: str = "today",
+    include_answers: bool = False,
+) -> dict[str, Any]:
+    """Get a puzzle from the week's Bonus Puzzles drop that includes a date. Wordle in 1 has five
+    rounds, each a starting guess and one word to find; Connections 3x3 has 3 groups of 3;
+    Colorful Strands is a Strands board; crosswords have a grid and clues.
+
+    game is mini (the Mystery Mini), easy (Easy Mode Crossword) or special (Special Crossword) for
+    crosswords. Solutions, groups, theme words and crossword answers are only included with include_answers.
+    """
+    nyt = client()
+    week = nyt.bonus_week(day(date).isoformat())
+    listing = views.find_bonus_listing(week, game)
+    if listing is None:
+        raise ToolError(f"No {game} puzzle in the week of {week.drop_date}")
+    return views.bonus_puzzle_view(listing, nyt.bonus_puzzle(listing), include_answers)
+
+
+@tool()
 def spelling_bee(date: str = "today", include_answers: bool = False, include_hints: bool = True) -> dict[str, Any]:
     """Get a Spelling Bee puzzle (from 2018-05-06): letters, word and pangram counts, and points.
 
@@ -266,6 +296,16 @@ def spelling_bee_history(date_start: str | None = None, date_end: str | None = N
     """
     first, last = window(date_start, date_end, "spelling-bee")
     return views.bee_results(client(), first, last)
+
+
+@tool()
+def bonus_history(date_start: str | None = None, date_end: str | None = None) -> list[dict[str, Any]]:
+    """Get the user's results for each weekly Bonus Puzzle in a date range (default: the last 30
+    days): solved, in progress or not played, with details such as rounds solved, mistakes or
+    solve time. Needs cookies.
+    """
+    first, last = window(date_start, date_end, "bonus")
+    return views.bonus_results(client(), first, last)
 
 
 @tool()

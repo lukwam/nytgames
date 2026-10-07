@@ -62,9 +62,10 @@ def wordle_view(puzzle, answers: bool = False) -> dict:
 
 
 def connections_view(puzzle, answers: bool = False) -> dict:
-    words = [card.text for row in puzzle.board() for card in row]
     data = {"date": puzzle.print_date, "id": puzzle.id, "editor": puzzle.editor,
-            "board": [words[i:i + 4] for i in range(0, len(words), 4)]}
+            "board": [[card.text for card in row] for row in puzzle.board()]}
+    if getattr(puzzle, "title", None):
+        data["title"] = puzzle.title
     if answers:
         data["categories"] = [{"title": category.title, "cards": [card.text for card in category.cards]}
                               for category in puzzle.categories]
@@ -74,12 +75,38 @@ def connections_view(puzzle, answers: bool = False) -> dict:
 def strands_view(puzzle, answers: bool = False) -> dict:
     data = {"date": puzzle.printDate, "id": puzzle.id, "clue": puzzle.clue, "editor": puzzle.editor,
             "board": puzzle.startingBoard}
+    if puzzle.title:
+        data["title"] = puzzle.title
     if answers:
+        if puzzle.themeColors:
+            data["theme_colors"] = puzzle.themeColors
         data["spangram"] = puzzle.spangram
         data["theme_words"] = puzzle.themeWords or list(puzzle.themeCoords)
         data["spangram_coords"] = puzzle.spangramCoords or []
         data["theme_coords"] = puzzle.themeCoords
     return data
+
+
+def wordle_in_one_view(puzzle, answers: bool = False) -> dict:
+    """Wordle in 1: each round's starting guess, and its solution with `answers`."""
+    return {"date": puzzle.print_date, "id": puzzle.id, "slug": puzzle.slug, "title": puzzle.title,
+            "editor": puzzle.editor,
+            "rounds": [{"start": r.start, **({"solution": r.solution} if answers else {})}
+                       for r in puzzle.rounds]}
+
+
+def bonus_puzzle_view(listing, puzzle, answers: bool = False) -> dict:
+    """A bonus puzzle with its listing details, in its game's view."""
+    if listing.game == "wordle-in-one":
+        data = wordle_in_one_view(puzzle, answers)
+    elif listing.game == "connections":
+        data = connections_view(puzzle, answers)
+    elif listing.game == "strands":
+        data = strands_view(puzzle, answers)
+    else:
+        data = crossword_view(puzzle, listing.variant or "bonus", answers)
+    return {**data, "game": listing.game, "variant": listing.variant,
+            "title": listing.title or data.get("title"), "byline": listing.card_byline, "slug": listing.slug}
 
 
 def bee_view(puzzle, answers: bool = False, hints: bool = False) -> dict:
@@ -328,6 +355,71 @@ def strands_results(client, first: datetime.date, last: datetime.date) -> list[d
             "other_words": len(g.otherWordsFound) if g else 0,
             "archive": g.isPlayingArchive if g else None,
         })
+    return rows
+
+
+# Bonus Puzzles
+
+
+# Each kind of bonus puzzle: its game and listing variants (any variant if empty).
+BONUS_KINDS = {
+    "wordle-in-one": ("wordle-in-one", ()),
+    "connections": ("connections", ()),
+    "strands": ("strands", ()),
+    "mini": ("crossword", ("mini",)),
+    "easy": ("crossword", ("easy-mode",)),
+    "special": ("crossword", ("monthly", "standard")),
+}
+
+
+def find_bonus_listing(week, kind: str):
+    """Return the listing for a kind of bonus puzzle (a BONUS_KINDS key) in a week, or None."""
+    game, variants = BONUS_KINDS[kind]
+    return next((p for p in week.puzzles if p.game == game and (not variants or p.variant in variants)), None)
+
+
+def bonus_week_view(week) -> dict:
+    return {"drop_date": week.drop_date, "free": bool(week.display_free),
+            "prev_drop": week.prev_drop, "next_drop": week.next_drop,
+            "puzzles": [{"game": p.game, "variant": p.variant, "title": p.title, "subtitle": p.subtitle,
+                         "byline": p.card_byline, "id": p.id, "slug": p.slug} for p in week.puzzles]}
+
+
+def bonus_results(client, first: datetime.date, last: datetime.date) -> list[dict]:
+    """Return the user's results for each week's Bonus Puzzles in a date range."""
+    weeks = client.bonus_weeks(first.isoformat(), last.isoformat())
+    listings = [(week, p) for week in weeks for p in week.puzzles]
+
+    def ids(game):
+        return [p.id for _, p in listings if p.game == game]
+
+    states: dict[tuple[str, int], Any] = {}
+    fetchers = (("wordle-in-one", client.wordle_in_one_latest),
+                ("connections", lambda batch: client.connections_latest(batch, bonus=True)),
+                ("strands", lambda batch: client.strands_latest(batch, bonus=True)),
+                ("crossword", lambda batch: client.crossword_game(batch, "bonus")))
+    for game, fetch in fetchers:
+        for batch in chunks(ids(game), STATE_BATCH):
+            for state in fetch(batch).states:
+                states[game, int(state.puzzle_id)] = state.game_data
+
+    rows = []
+    for week, p in listings:
+        g = states.get((p.game, p.id))
+        status, detail = "not played", ""
+        if g and p.game == "wordle-in-one":
+            status = "solved" if g.puzzleComplete else "in progress"
+            detail = f"{g.rounds_solved}/{len(g.rounds)} rounds" if g.rounds else ""
+        elif g and p.game == "connections":
+            status = connections_status(g)
+            detail = f"{g.mistakes} mistakes" if g.mistakes is not None else ""
+        elif g and p.game == "strands":
+            status = "solved" if g.isSolved else "in progress"
+        elif g and p.game == "crossword":
+            status = "solved" if g.firstSolve else "in progress"
+            detail = format_seconds(g.playTimeSeconds) if g.firstSolve and g.playTimeSeconds else ""
+        rows.append({"week": week.drop_date, "game": p.game, "variant": p.variant, "title": p.title,
+                     "puzzle_id": p.id, "slug": p.slug, "status": status, "detail": detail})
     return rows
 
 

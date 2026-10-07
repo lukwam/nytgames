@@ -21,6 +21,8 @@ from nytgames.exceptions import NYTGamesRateLimitError
 from nytgames.models import ArchiveGame
 from nytgames.models import ArchivePuzzle
 from nytgames.models import BadgeGame
+from nytgames.models import BonusPuzzleListing
+from nytgames.models import BonusWeek
 from nytgames.models import ConnectionsLatest
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
@@ -40,6 +42,8 @@ from nytgames.models import TrophyCase
 from nytgames.models import WordleBotAnalysis
 from nytgames.models import WordleBotSummary
 from nytgames.models import WordlePuzzle
+from nytgames.models import WordleInOneLatest
+from nytgames.models import WordleInOnePuzzle
 from nytgames.models import WordlePuzzlesList
 
 logger = logging.getLogger(__name__)
@@ -291,19 +295,82 @@ class NYTGamesClient:
             result.trophies.update(case.trophies)
         return result
 
+    # Bonus Puzzles
+    def bonus_week(self, date: str) -> BonusWeek:
+        """Return the week's Bonus Puzzles drop that includes a date (YYYY-MM-DD).
+
+        Drops come out on Wednesdays, starting 2026-08-26 (earlier dates
+        return that first week), and NYT serves the next week's drop early.
+        """
+        return BonusWeek(**self._get(f"/svc/games/bonus/week/v1/{date}.json")["bonus_puzzles_week"])
+
+    def bonus_weeks(self, date_start: str, date_end: str) -> list[BonusWeek]:
+        """Return each week's Bonus Puzzles drop between two dates, oldest
+        first, up to the latest published week. Makes one request per week."""
+        weeks = [self.bonus_week(date_start)]
+        while True:
+            next_drop = weeks[-1].next_drop
+            if not next_drop or next_drop > date_end or next_drop <= weeks[-1].drop_date:
+                return weeks
+            try:
+                week = self.bonus_week(next_drop)
+            except NYTGamesNotFoundError:  # not published yet
+                return weeks
+            if week.drop_date <= weeks[-1].drop_date:
+                return weeks
+            weeks.append(week)
+
+    def bonus_puzzle(self, listing: BonusPuzzleListing):
+        """Return a bonus puzzle from its listing in a BonusWeek: a
+        WordleInOnePuzzle, ConnectionsPuzzle, StrandsPuzzle or CrosswordPuzzle."""
+        fetch = {"wordle-in-one": self.wordle_in_one, "connections": self.connections_bonus,
+                 "strands": self.strands_bonus}.get(listing.game)
+        if fetch:
+            return fetch(listing.slug)
+        if listing.game == "crossword":
+            return self.crossword_by_id(listing.id)
+        raise ValueError(f"Unknown bonus puzzle game: {listing.game}")
+
+    def wordle_in_one(self, slug: str) -> WordleInOnePuzzle:
+        """Return a Wordle in 1 bonus puzzle by its slug (e.g. 2026-10-07-8)."""
+        return WordleInOnePuzzle(**self._get(f"/svc/wordle-in-one/v1/bonus/{slug}.json"))
+
+    def connections_bonus(self, slug: str) -> ConnectionsPuzzle:
+        """Return a Connections bonus puzzle (Connections 3x3) by its slug."""
+        return ConnectionsPuzzle(**self._get(f"/svc/connections/v2/bonus/{slug}.json"))
+
+    def strands_bonus(self, slug: str) -> StrandsPuzzle:
+        """Return a Strands bonus puzzle (Colorful Strands) by its slug."""
+        return StrandsPuzzle(**self._get(f"/svc/strands/v2/bonus/{slug}.json"))
+
+    def wordle_in_one_latest(self, puzzle_ids: PuzzleIds = None) -> WordleInOneLatest:
+        """Return the user's saved Wordle in 1 games.
+
+        `puzzle_ids` is a puzzle ID (the listing's `id`), a comma separated
+        string or a list of up to 30 IDs. `states` only includes puzzles the
+        user has played.
+        """
+        response = self._get(
+            "/svc/games/state/wordle_in_one/latests",
+            params={"puzzle_ids": join_puzzle_ids(puzzle_ids)},
+        )
+        return WordleInOneLatest(**response)
+
     # Connections
     def connections(self, date: str) -> ConnectionsPuzzle:
         """Return the Connections puzzle for a date (YYYY-MM-DD)."""
         return ConnectionsPuzzle(**self._get(f"/svc/connections/v2/{date}.json"))
 
-    def connections_latest(self, puzzle_ids: PuzzleIds = None) -> ConnectionsLatest:
+    def connections_latest(self, puzzle_ids: PuzzleIds = None, bonus: bool = False) -> ConnectionsLatest:
         """Return the user's latest Connections game states.
 
         `puzzle_ids` is a puzzle ID, a comma separated string or a list of up
-        to 30 IDs. `states` only includes puzzles the user has played.
+        to 30 IDs. `states` only includes puzzles the user has played. Set
+        `bonus` for bonus puzzles (Connections 3x3).
         """
+        game = "connections_bonus" if bonus else "connections"
         response = self._get(
-            "/svc/games/state/connections/latests",
+            f"/svc/games/state/{game}/latests",
             params={"puzzle_ids": join_puzzle_ids(puzzle_ids)},
         )
         return ConnectionsLatest(**response)
@@ -464,14 +531,16 @@ class NYTGamesClient:
         """Return the Strands puzzle for a date (YYYY-MM-DD)."""
         return StrandsPuzzle(**self._get(f"/svc/strands/v2/{date}.json"))
 
-    def strands_latest(self, puzzle_ids: PuzzleIds = None) -> StrandsLatest:
+    def strands_latest(self, puzzle_ids: PuzzleIds = None, bonus: bool = False) -> StrandsLatest:
         """Return the user's latest Strands game states.
 
         `puzzle_ids` is a puzzle ID, a comma separated string or a list of up
-        to 30 IDs. `states` only includes puzzles the user has played.
+        to 30 IDs. `states` only includes puzzles the user has played. Set
+        `bonus` for bonus puzzles (Colorful Strands).
         """
+        game = "strands_bonus" if bonus else "strands"
         response = self._get(
-            "/svc/games/state/strands/latests",
+            f"/svc/games/state/{game}/latests",
             params={"puzzle_ids": join_puzzle_ids(puzzle_ids)},
         )
         return StrandsLatest(**response)

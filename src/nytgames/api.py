@@ -44,6 +44,7 @@ from nytgames import spelling_bee_hints
 from nytgames.models import ArchiveGame
 from nytgames.models import ArchivePuzzle
 from nytgames.models import BadgeGame
+from nytgames.models import BonusWeek
 from nytgames.models import ConnectionsLatest
 from nytgames.models import ConnectionsPuzzle
 from nytgames.models import CrosswordGame
@@ -60,6 +61,8 @@ from nytgames.models import StrandsLatest
 from nytgames.models import StrandsPuzzle
 from nytgames.models import TrophyCase
 from nytgames.models import WordleBotAnalysis
+from nytgames.models import WordleInOneLatest
+from nytgames.models import WordleInOnePuzzle
 from nytgames.models import WordleBotSummary
 from nytgames.models import WordlePuzzle
 from nytgames.models import WordlePuzzlesList
@@ -203,6 +206,166 @@ def get_trophy_case(game: BadgeGame, client: NYTGamesClient = Depends(get_client
     ```
     """
     return client.trophy_case(game)
+
+
+# Bonus Puzzles
+@router.get(
+    "/bonus/week/{date}",
+    response_model=BonusWeek,
+    summary="List a week's Bonus Puzzles",
+    tags=["Bonus Puzzles"])
+def get_bonus_week(
+    client: NYTGamesClient = Depends(get_client),
+    date: str = Path(..., examples=["2026-10-07"]),
+) -> BonusWeek:
+    """
+    **List a week's Bonus Puzzles**
+
+    Returns the weekly Bonus Puzzles drop that includes a date: Wordle in 1,
+    Connections 3x3, Colorful Strands and bonus crosswords, with each
+    puzzle's ID and slug. Drops come out on Wednesdays from 2026-08-26.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/games/bonus/week/v1/{date}.json
+    ```
+    """
+    return client.bonus_week(date)
+
+
+@router.get(
+    "/bonus/wordle-in-one/latest",
+    response_model=WordleInOneLatest,
+    summary="List your saved Wordle in 1 games",
+    tags=["Bonus Puzzles"])
+def list_latest_wordle_in_one(
+    client: NYTGamesClient = Depends(get_client),
+    puzzle_ids: str = Query(None, examples=["8,7,6"]),
+) -> WordleInOneLatest:
+    """
+    **List your saved Wordle in 1 games**
+
+    Returns the user's saved Wordle in 1 games for the puzzle IDs (the `id` in
+    a bonus week's listing). Requires the `NYT-S` cookie.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/games/state/wordle_in_one/latests
+    ```
+    """
+    return client.wordle_in_one_latest(puzzle_ids)
+
+
+@router.get(
+    "/bonus/connections/latest",
+    response_model=ConnectionsLatest,
+    summary="List your saved Connections bonus games",
+    tags=["Bonus Puzzles"])
+def list_latest_connections_bonus(
+    client: NYTGamesClient = Depends(get_client),
+    puzzle_ids: str = Query(None, examples=["8,7,6"]),
+) -> ConnectionsLatest:
+    """
+    **List your saved Connections bonus games**
+
+    Returns the user's saved Connections bonus games for the puzzle IDs (the `id` in
+    a bonus week's listing). Requires the `NYT-S` cookie.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/games/state/connections_bonus/latests
+    ```
+    """
+    return client.connections_latest(puzzle_ids, bonus=True)
+
+
+@router.get(
+    "/bonus/strands/latest",
+    response_model=StrandsLatest,
+    summary="List your saved Strands bonus games",
+    tags=["Bonus Puzzles"])
+def list_latest_strands_bonus(
+    client: NYTGamesClient = Depends(get_client),
+    puzzle_ids: str = Query(None, examples=["8,7,6"]),
+) -> StrandsLatest:
+    """
+    **List your saved Strands bonus games**
+
+    Returns the user's saved Strands bonus games for the puzzle IDs (the `id` in
+    a bonus week's listing). Requires the `NYT-S` cookie.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/games/state/strands_bonus/latests
+    ```
+    """
+    return client.strands_latest(puzzle_ids, bonus=True)
+
+
+@router.get(
+    "/bonus/wordle-in-one/{slug}",
+    response_model=WordleInOnePuzzle,
+    summary="Get a Wordle in 1 puzzle",
+    tags=["Bonus Puzzles"])
+def get_wordle_in_one(
+    client: NYTGamesClient = Depends(get_client),
+    slug: str = Path(..., examples=["2026-10-07-1270"]),
+) -> WordleInOnePuzzle:
+    """
+    **Get a Wordle in 1 puzzle**
+
+    Returns a Wordle in 1 bonus puzzle by its slug, from a bonus week's listing.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/wordle-in-one/v1/bonus/{slug}.json
+    ```
+    """
+    return client.wordle_in_one(slug)
+
+
+@router.get(
+    "/bonus/connections/{slug}",
+    response_model=ConnectionsPuzzle,
+    summary="Get a Connections bonus puzzle",
+    tags=["Bonus Puzzles"])
+def get_connections_bonus(
+    client: NYTGamesClient = Depends(get_client),
+    slug: str = Path(..., examples=["2026-10-07-1270"]),
+) -> ConnectionsPuzzle:
+    """
+    **Get a Connections bonus puzzle**
+
+    Returns a Connections bonus bonus puzzle by its slug, from a bonus week's listing.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/connections/v2/bonus/{slug}.json
+    ```
+    """
+    return client.connections_bonus(slug)
+
+
+@router.get(
+    "/bonus/strands/{slug}",
+    response_model=StrandsPuzzle,
+    summary="Get a Strands bonus puzzle",
+    tags=["Bonus Puzzles"])
+def get_strands_bonus(
+    client: NYTGamesClient = Depends(get_client),
+    slug: str = Path(..., examples=["2026-10-07-1270"]),
+) -> StrandsPuzzle:
+    """
+    **Get a Strands bonus puzzle**
+
+    Returns a Strands bonus bonus puzzle by its slug, from a bonus week's listing.
+
+    **Backend API**
+    ```
+    GET https://www.nytimes.com/svc/strands/v2/bonus/{slug}.json
+    ```
+    """
+    return client.strands_bonus(slug)
 
 
 # Connections

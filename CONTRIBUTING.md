@@ -49,6 +49,7 @@ src/nytgames/
     cli/             Optional nytg command line (the "cli" extra)
         app.py       Root command, global options and error messages
         puzzles.py   Puzzle commands
+        bonus.py     Bonus Puzzles commands
         player.py    stats, today and history
         archive.py   archive
         settings.py  auth and config commands
