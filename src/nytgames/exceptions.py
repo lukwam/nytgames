@@ -35,6 +35,17 @@ class NYTGamesNotFoundError(NYTGamesHTTPError):
     """NYT has no data for the request (HTTP 404), e.g. a date with no puzzle."""
 
 
+class NYTGamesNoProfileError(NYTGamesError, KeyError):
+    """The NYT account has no NYT Games profile, so there are no stats.
+
+    NYT creates the profile when the account first plays a game while
+    signed in. Subclasses KeyError, which was raised before.
+    """
+
+    def __str__(self) -> str:
+        return str(self.args[0]) if self.args else ""
+
+
 class NYTGamesParseError(NYTGamesError, ValueError):
     """An NYT page did not contain the expected game data."""
 

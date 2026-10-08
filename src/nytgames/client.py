@@ -15,7 +15,9 @@ from bs4 import BeautifulSoup
 from nytgames import __version__
 from nytgames.exceptions import NYTGamesAuthenticationError
 from nytgames.exceptions import NYTGamesHTTPError
+from nytgames.exceptions import NYTGamesNoProfileError
 from nytgames.exceptions import NYTGamesNotFoundError
+from nytgames.exceptions import NYTGamesParseError
 from nytgames.exceptions import NYTGamesParseError
 from nytgames.exceptions import NYTGamesRateLimitError
 from nytgames.models import ArchiveGame
@@ -302,7 +304,10 @@ class NYTGamesClient:
         Drops come out on Wednesdays, starting 2026-08-26 (earlier dates
         return that first week), and NYT serves the next week's drop early.
         """
-        return BonusWeek(**self._get(f"/svc/games/bonus/week/v1/{date}.json")["bonus_puzzles_week"])
+        response = self._get(f"/svc/games/bonus/week/v1/{date}.json")
+        if not isinstance(response, dict) or not isinstance(response.get("bonus_puzzles_week"), dict):
+            raise NYTGamesParseError("NYT's bonus week response has no bonus_puzzles_week")
+        return BonusWeek(**response["bonus_puzzles_week"])
 
     def bonus_weeks(self, date_start: str, date_end: str) -> list[BonusWeek]:
         """Return each week's Bonus Puzzles drop between two dates, oldest
@@ -460,12 +465,19 @@ class NYTGamesClient:
     def player_stats(self) -> Player:
         """Return the user's stats for every game they have played.
 
-        Requires the NYT-S cookie. Includes the user's NYT user ID.
+        Requires the NYT-S cookie. Includes the user's NYT user ID. Raises
+        NYTGamesNoProfileError for accounts that have never played a game
+        while signed in, which have no NYT Games profile yet.
         """
         response = self._get(
             "/svc/games/state/wordleV2/latests",
             params={"puzzle_ids": "0"},
         )
+        if not isinstance(response, dict) or not response.get("player"):
+            raise NYTGamesNoProfileError(
+                "This NYT account has no NYT Games profile yet; NYT creates one when the "
+                "account first plays a game while signed in"
+            )
         return Player(**response["player"])
 
     # Letter Boxed

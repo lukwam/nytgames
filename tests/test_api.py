@@ -330,3 +330,11 @@ def test_bonus_routes(nyt):
                        ("strands", "strands_bonus")):
         assert client.get(f"/bonus/{path}/latest?puzzle_ids=8").status_code == 200
         assert nyt.call_args.args[0] == f"https://www.nytimes.com/svc/games/state/{game}/latests"
+
+
+def test_player_stats_without_games_profile(nyt):
+    """Accounts with no NYT Games profile get a 404 with a reason."""
+    nyt.return_value = mock_response({"user_id": 1, "states": []})
+    response = client.get("/player/stats")
+    assert response.status_code == 404
+    assert "no NYT Games profile" in response.json()["detail"]

@@ -15,6 +15,7 @@ import typer
 from rich.markup import escape
 
 from nytgames import NYTGamesAuthenticationError
+from nytgames import NYTGamesNoProfileError
 from nytgames import NYTGamesNotFoundError
 from nytgames import NYTGamesParseError
 from nytgames import NYTGamesRateLimitError
@@ -140,6 +141,10 @@ def run(app: typer.Typer) -> None:
     except NYTGamesRateLimitError as err:
         wait = f" Try again in {err.retry_after:g} seconds." if err.retry_after else " Try again later."
         output.err_console.print(f"[red]NYT is rate limiting requests.[/red]{wait}")
+        sys.exit(1)
+    except NYTGamesNoProfileError:
+        output.err_console.print("[red]No NYT Games profile yet.[/red] NYT creates one when this account "
+                                 "first plays a game while signed in.")
         sys.exit(1)
     except NYTGamesNotFoundError:
         output.err_console.print("[red]Not found.[/red] NYT has no puzzle for that date.")
