@@ -1,5 +1,5 @@
 """Unofficial client for the New York Times Games APIs."""
-__version__ = "0.9.4"
+__version__ = "0.9.5"
 
 from nytgames.client import NYTGamesClient  # noqa: E402
 from nytgames.client import parse_cookies  # noqa: E402
@@ -8,6 +8,7 @@ from nytgames.exceptions import NYTGamesError  # noqa: E402
 from nytgames.exceptions import NYTGamesExportError  # noqa: E402
 from nytgames.exceptions import NYTGamesHTTPError  # noqa: E402
 from nytgames.exceptions import NYTGamesNotFoundError  # noqa: E402
+from nytgames.exceptions import NYTGamesNoProfileError  # noqa: E402
 from nytgames.exceptions import NYTGamesParseError  # noqa: E402
 from nytgames.exceptions import NYTGamesRateLimitError  # noqa: E402
 from nytgames.models import ArchiveGame  # noqa: E402
@@ -23,6 +24,7 @@ __all__ = [
     "NYTGamesExportError",
     "NYTGamesHTTPError",
     "NYTGamesNotFoundError",
+    "NYTGamesNoProfileError",
     "NYTGamesParseError",
     "NYTGamesRateLimitError",
     "parse_cookies",

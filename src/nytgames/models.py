@@ -675,7 +675,7 @@ class SpellingBeeLatest(NYTModel):
     """Spelling Bee Latest."""
     user_id: int
     states: List[SpellingBeeLatestState]
-    player: Player
+    player: Player | None = None
     badges_trophy_shelf: TrophyShelf = []
 
 

@@ -38,6 +38,7 @@ import requests
 
 from nytgames import __version__
 from nytgames import NYTGamesClient
+from nytgames import NYTGamesNoProfileError
 from nytgames import NYTGamesParseError
 from nytgames import formats
 from nytgames import spelling_bee_hints
@@ -107,9 +108,15 @@ async def nyt_parse_error_handler(request: Request, exc: NYTGamesParseError) -> 
     return JSONResponse(status_code=502, content={"detail": str(exc)})
 
 
+async def nyt_no_profile_handler(request: Request, exc: NYTGamesNoProfileError) -> JSONResponse:
+    """Return 404 when the NYT account has no NYT Games profile yet."""
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
 def add_exception_handlers(app: FastAPI) -> None:
     """Return NYT errors from the client as HTTP responses instead of 500s."""
     app.add_exception_handler(requests.HTTPError, nyt_http_error_handler)
+    app.add_exception_handler(NYTGamesNoProfileError, nyt_no_profile_handler)
     app.add_exception_handler(NYTGamesParseError, nyt_parse_error_handler)
 
 

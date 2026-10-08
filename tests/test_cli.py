@@ -13,6 +13,7 @@ import requests
 from typer.testing import CliRunner
 
 from nytgames import NYTGamesAuthenticationError
+from nytgames import NYTGamesNoProfileError
 from nytgames import NYTGamesNotFoundError
 from nytgames import NYTGamesRateLimitError
 from nytgames.cli import dates
@@ -143,6 +144,7 @@ def test_bad_date_is_a_usage_error(client):
     (NYTGamesNotFoundError("404", response=mock.Mock(status_code=404)), "no puzzle"),
     (NYTGamesAuthenticationError("403", response=mock.Mock(status_code=403)), "nytg auth login"),
     (NYTGamesRateLimitError("429", response=mock.Mock(status_code=429), retry_after=30), "Try again in 30 seconds"),
+    (NYTGamesNoProfileError("no profile"), "No NYT Games profile yet"),
 ])
 def test_main_reports_nyt_errors(client, monkeypatch, capsys, error, message):
     client.wordle.side_effect = error
@@ -447,3 +449,4 @@ def test_badges(client):
     assert [r["id"] for r in earned] == ["st4"]
     assert client.badges.call_args.args[0] == ["wordleV2", "connections", "strands", "spelling_bee"]
     assert "Found Theme Words" in run("badges").stdout
+

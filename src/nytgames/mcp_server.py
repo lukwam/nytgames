@@ -21,6 +21,7 @@ from nytgames import NYTGamesAuthenticationError
 from nytgames import NYTGamesClient
 from nytgames import NYTGamesExportError
 from nytgames import NYTGamesHTTPError
+from nytgames import NYTGamesNoProfileError
 from nytgames import NYTGamesNotFoundError
 from nytgames import NYTGamesRateLimitError
 from nytgames import __version__
@@ -92,6 +93,9 @@ def nyt_errors(fn):
         except NYTGamesAuthenticationError:
             raise ToolError("NYT rejected the request: this needs the user's NYT cookies, which are missing "
                             "or have expired. They can run `nytg auth login` or set NYT_COOKIES.") from None
+        except NYTGamesNoProfileError:
+            raise ToolError("The user's NYT account has no NYT Games profile, so there are no stats yet. NYT "
+                            "creates one when they first play a game while signed in.") from None
         except NYTGamesNotFoundError:
             raise ToolError("Not found: NYT has nothing for that date or ID.") from None
         except NYTGamesRateLimitError as err:

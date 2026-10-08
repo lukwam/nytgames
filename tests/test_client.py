@@ -10,6 +10,8 @@ import pytest
 import requests
 
 from nytgames import NYTGamesClient
+from nytgames import NYTGamesNoProfileError
+from nytgames import NYTGamesParseError
 from nytgames import parse_cookies
 
 
@@ -340,3 +342,28 @@ def test_older_game_state_shapes(session):
     rounds, board = (s.game_data for s in wordle.states)
     assert rounds.rounds_format and rounds.rounds[0].timeMs == 52000 and rounds.boardState == []
     assert not board.rounds_format and board.status == "WIN"
+
+
+@pytest.mark.parametrize("response", [
+    {"user_id": 1, "states": [], "badges_trophy_shelf": {}},
+    {"user_id": 1, "states": [], "player": None},
+])
+def test_player_stats_without_games_profile(session, response):
+    """Accounts that have never played have no player; that's a clear error, still a KeyError."""
+    session.get.return_value.json.return_value = response
+    client = NYTGamesClient(cookies="NYT-S=abc", session=session)
+    with pytest.raises(NYTGamesNoProfileError, match="no NYT Games profile"):
+        client.player_stats()
+    with pytest.raises(KeyError):
+        client.player_stats()
+
+
+def test_spelling_bee_latest_without_player(session):
+    session.get.return_value.json.return_value = {"user_id": 1, "states": []}
+    assert NYTGamesClient(session=session).spelling_bee_latest().player is None
+
+
+def test_bonus_week_unexpected_response(session):
+    session.get.return_value.json.return_value = {"error": "nope"}
+    with pytest.raises(NYTGamesParseError):
+        NYTGamesClient(session=session).bonus_week("2026-10-07")

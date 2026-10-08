@@ -4,6 +4,20 @@ All notable changes to this project. The project follows
 [Semantic Versioning](https://semver.org/); while it's below 1.0, minor
 versions may include breaking changes.
 
+## 0.9.5
+
+### Fixed
+
+- `player_stats()` raised a bare `KeyError: 'player'` for NYT accounts that
+  have never played a game while signed in, since they have no NYT Games
+  profile. It now raises `NYTGamesNoProfileError` (still a `KeyError`, so
+  existing handlers keep working). `nytg stats`, the MCP tools and the API
+  (404) explain it. Found by gamesapp.
+- `spelling_bee_latest()` no longer requires `player`, like the other saved
+  game methods.
+- `bonus_week()` raises `NYTGamesParseError` instead of `KeyError` for an
+  unexpected response.
+
 ## 0.9.4
 
 ### Added
