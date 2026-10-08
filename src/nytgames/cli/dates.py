@@ -17,6 +17,7 @@ FIRST_DATES = {
     "crossword-daily": datetime.date(1993, 11, 21),
     "crossword-mini": datetime.date(2014, 8, 21),
     "crossword-midi": datetime.date(2026, 2, 25),
+    "bonus": datetime.date(2026, 8, 26),
 }
 
 

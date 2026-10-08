@@ -21,6 +21,7 @@ from nytgames import NYTGamesRateLimitError
 from nytgames import __version__
 from nytgames import parse_cookies
 from nytgames.cli import archive
+from nytgames.cli import bonus
 from nytgames.cli import output
 from nytgames.cli import player
 from nytgames.cli import puzzles
@@ -91,6 +92,7 @@ def create_app(
         output.default_format = fmt or state.config.get(state.active_profile, "format")
 
     puzzles.register(app)
+    bonus.register(app)
     player.register(app)
     app.command("archive")(archive.archive)
     app.add_typer(settings.build_auth_app(), name="auth")

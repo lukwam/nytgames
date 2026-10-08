@@ -26,6 +26,7 @@ import nytgames
 from nytgames import NYTGamesClient
 from nytgames import formats
 from nytgames import spelling_bee_hints
+from nytgames import views
 from nytgames.client import BADGE_GAMES
 
 NYT_TIMEZONE = zoneinfo.ZoneInfo("America/New_York")
@@ -85,6 +86,15 @@ def checks(client: NYTGamesClient, today: datetime.date) -> list[tuple[str, Call
         assert len(puzzle.sides) == 4 and puzzle.dictionary
         return f"#{puzzle.id}, {len(puzzle.dictionary)} words"
 
+    def bonus() -> str:
+        week = client.bonus_week(today.isoformat())
+        assert week.puzzles, "no bonus puzzles this week"
+        kinds = []
+        for listing in week.puzzles:
+            client.bonus_puzzle(listing)
+            kinds.append(listing.variant or listing.game)
+        return f"week of {week.drop_date}: {', '.join(kinds)}"
+
     def oracle() -> str:
         result = client.crossword_oracle("daily").results
         return f"current #{result.current.puzzle_id}, next #{result.next.puzzle_id}"
@@ -125,6 +135,7 @@ def checks(client: NYTGamesClient, today: datetime.date) -> list[tuple[str, Call
         ("Midi crossword", lambda: crossword("midi")),
         ("Bonus crossword", lambda: crossword("bonus", first_of_month)),
         ("Crossword schedule", oracle),
+        ("Bonus Puzzles", bonus),
         ("Crossword by ID", lambda: crossword_by_id(20759)),
         ("Games archive", archive),
         ("Crossword list", crossword_list),
@@ -150,6 +161,11 @@ def user_checks(client: NYTGamesClient) -> list[tuple[str, Callable[[], str]]]:
         assert not unknown, f"badges missing from badges.json: {sorted(unknown)}"
         return f"{sum(len(game.badges) for game in case.trophies.values())} badges"
 
+    def bonus_states() -> str:
+        last = datetime.datetime.now(NYT_TIMEZONE).date()
+        rows = views.bonus_results(client, last - datetime.timedelta(days=29), last)
+        return f"{sum(r['status'] != 'not played' for r in rows)} of {len(rows)} recent bonus puzzles played"
+
     def game_states(game: str, latest: Callable) -> Callable[[], str]:
         def check() -> str:
             last = datetime.datetime.now(NYT_TIMEZONE).date()
@@ -158,7 +174,7 @@ def user_checks(client: NYTGamesClient) -> list[tuple[str, Callable[[], str]]]:
             return f"{len(latest(ids).states)} of {len(ids)} recent games played"
         return check
 
-    return [("Player stats", stats), ("WordleBot", wordlebot), ("Badges", badges),
+    return [("Player stats", stats), ("WordleBot", wordlebot), ("Badges", badges), ("Bonus Puzzles states", bonus_states),
             ("Connections states", game_states("connections", client.connections_latest)),
             ("Strands states", game_states("strands", client.strands_latest))]
 

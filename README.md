@@ -70,6 +70,7 @@ Puzzles don't need cookies. Everything about you does.
 | Crossword by ID | `crossword_by_id(puzzle_id)` | Any crossword, e.g. both puzzles on a date with two | Same as `crossword` | cell `answer`s |
 | Crossword schedule | `crossword_oracle(publish_type)` | Current and next puzzle | Puzzle IDs and publish times | |
 | WordleBot summary | `wordlebot_summary(date)` | 2021-06-19 | How everyone did: average guesses, skill and luck by mode, guess distributions, skill percentiles | `guesses` (the bot's solve paths) |
+| Bonus Puzzles | `bonus_week(date)`, `bonus_weeks(date_start, date_end)`, `bonus_puzzle(listing)` | 2026-08-26 | Each Wednesday's drop: Wordle in 1, Connections 3x3, Colorful Strands and bonus crosswords (Mystery Mini, Easy Mode, Special), with titles, bylines, IDs and slugs | Wordle in 1 `solution`s, and as for each game |
 | Puzzle list | `archive(game, date_start, date_end)` | Wordle, Connections, Strands, Daily, Mini, Midi | Puzzle IDs and dates for a range | Wordle `solution` |
 
 ### You (needs your NYT-S cookie)
@@ -84,6 +85,7 @@ Puzzles don't need cookies. Everything about you does.
 | Strands progress | `strands_latest(puzzle_ids)` | Your found words, other words and whether you solved it (up to 30 puzzles per call) |
 | WordleBot | `wordlebot()` | Your luck and skill for today's Wordle, overall and by round (today only, after you've opened WordleBot) |
 | Spelling Bee progress | `spelling_bee_latest(puzzle_ids)` | Words you found and your rank (up to 30 puzzles per call) |
+| Bonus Puzzles progress | `wordle_in_one_latest(puzzle_ids)`, `connections_latest(puzzle_ids, bonus=True)`, `strands_latest(puzzle_ids, bonus=True)`, `crossword_game(puzzle_ids, "bonus")` | Your saved bonus games, by the `id` in a week's listing |
 | Badges | `badges(games)`, `trophy_case(game)` | Every Wordle, Connections, Strands and Spelling Bee badge, earned or not, with your level and progress. Each badge's `info` has its name, description and artwork |
 
 The `*_latest()` results also include `badges_trophy_shelf`, the three badges
@@ -329,6 +331,11 @@ nytg crossword mini              # the grid and clues
 nytg crossword daily 1993-11-21 --answers
 nytg crossword mini --save mini.puz     # or .ipuz, or .xml (Crossword Compiler)
 nytg crossword daily yesterday --save daily.ipuz --progress   # with your progress
+nytg bonus week                  # this week's Bonus Puzzles (any day in the week works)
+nytg bonus wordle-in-one         # each round's starting guess
+nytg bonus connections -a        # Connections 3x3
+nytg bonus strands 2026-09-30
+nytg bonus crossword mini        # or easy, or special; --save works here too
 ```
 
 Answers are hidden unless you pass `--answers`, in every output format.
@@ -354,6 +361,7 @@ nytg history wordle --from monday
 nytg history connections         # won or lost, mistakes and groups found
 nytg history strands
 nytg history bee
+nytg history bonus               # the weekly Bonus Puzzles you've played
 nytg badges                      # every badge, earned or not, and your progress
 nytg badges wordle --earned
 ```
@@ -464,7 +472,8 @@ command `nytg-mcp`.
 |---|---|
 | `wordle`, `connections`, `strands`, `spelling_bee`, `letter_boxed`, `crossword` | Puzzles for any date; crosswords include each entry's clue, position and crossings |
 | `wordlebot_summary`, `puzzle_archive` | How everyone did on a Wordle; puzzle IDs for a date range |
-| `stats`, `today`, `crossword_history`, `wordle_history`, `spelling_bee_history`, `wordlebot`, `badges` | Your stats, progress, WordleBot analysis and badges (need cookies) |
+| `bonus_week`, `bonus_puzzle` | The weekly Bonus Puzzles: Wordle in 1, Connections 3x3, Colorful Strands and bonus crosswords |
+| `stats`, `today`, `crossword_history`, `wordle_history`, `spelling_bee_history`, `bonus_history`, `wordlebot`, `badges` | Your stats, progress, WordleBot analysis and badges (need cookies) |
 | `export_crossword` | Save a crossword as `.puz`, `.ipuz` or `.xml`, optionally with your progress |
 
 - Answers are hidden unless the agent passes `include_answers`, and the server
@@ -533,6 +542,11 @@ running your own instance in a container.
 | `GET /archive/{game}/{date_start}/{date_end}` | `svc/games/v1/archive/{game}/{date_start}/{date_end}` |
 | `GET /badges` | `svc/games/badges/trophy-case/{game}` for each game |
 | `GET /badges/{game}` | `svc/games/badges/trophy-case/{game}` |
+| `GET /bonus/week/{date}` | `svc/games/bonus/week/v1/{date}.json` |
+| `GET /bonus/wordle-in-one/{slug}` | `svc/wordle-in-one/v1/bonus/{slug}.json` |
+| `GET /bonus/connections/{slug}` | `svc/connections/v2/bonus/{slug}.json` |
+| `GET /bonus/strands/{slug}` | `svc/strands/v2/bonus/{slug}.json` |
+| `GET /bonus/{wordle-in-one,connections,strands}/latest` | `svc/games/state/{wordle_in_one,connections_bonus,strands_bonus}/latests` |
 | `GET /connections/latest` | `svc/games/state/connections/latests` |
 | `GET /connections/{date}` | `svc/connections/v2/{date}.json` |
 | `GET /crosswords/daily/today` | `svc/crosswords/v6/puzzle/daily.json` |

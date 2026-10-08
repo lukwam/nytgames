@@ -54,7 +54,7 @@ def test_tools_are_listed_with_descriptions_and_annotations():
     assert set(tools) == {
         "wordle", "connections", "strands", "spelling_bee", "letter_boxed", "crossword", "wordlebot_summary",
         "puzzle_archive", "stats", "today", "crossword_history", "wordle_history", "spelling_bee_history",
-        "wordlebot", "badges", "export_crossword",
+        "wordlebot", "badges", "bonus_week", "bonus_puzzle", "bonus_history", "export_crossword",
     }
     for name, t in tools.items():
         assert t.description and len(t.description) > 40, name
@@ -133,3 +133,14 @@ def test_badges(nyt):
     rows = data(call("badges", {"game": "wordle"}))
     assert [(r["game"], r["name"], r["next_level"]) for r in rows] == [("Wordle", "7-day Streak", 14)]
     nyt.badges.assert_called_once_with(["wordleV2"])
+
+
+def test_bonus_puzzle_hides_answers(nyt):
+    from tests.test_bonus import WEEK, WORDLE_IN_ONE
+    from nytgames.models import BonusWeek, WordleInOnePuzzle
+    nyt.bonus_week.return_value = BonusWeek(**WEEK)
+    nyt.bonus_puzzle.return_value = WordleInOnePuzzle(**WORDLE_IN_ONE)
+    assert data(call("bonus_puzzle", {"game": "wordle-in-one"}))["rounds"][0] == {"start": "aaaaa"}
+    shown = data(call("bonus_puzzle", {"game": "wordle-in-one", "include_answers": True}))
+    assert shown["rounds"][0]["solution"] == "bbbbb"
+    assert call("bonus_puzzle", {"game": "easy"}).is_error

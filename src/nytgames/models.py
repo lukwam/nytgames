@@ -57,10 +57,12 @@ class ConnectionsPuzzle(NYTModel):
     categories: List[ConnectionsPuzzleCategory]
 
     def board(self) -> List[List[ConnectionsPuzzleCard]]:
-        """Return the cards as the 4x4 starting board, in position order."""
+        """Return the cards as the starting board, in position order: 4x4, or
+        3x3 for the Connections 3x3 bonus puzzle."""
         cards = sorted((card for category in self.categories for card in category.cards),
                        key=lambda card: card.position)
-        return [cards[i:i + 4] for i in range(0, len(cards), 4)]
+        width = len(self.categories) or 4
+        return [cards[i:i + width] for i in range(0, len(cards), width)]
 
 
 class ConnectionsGameData(NYTModel):
@@ -690,6 +692,10 @@ class StrandsPuzzle(NYTModel):
     themeCoords: Dict[str, List[List[int]]]
     spangramCoords: List[List[int]] | None = None
     themeWords: List[str] | None = []
+    title: str | None = None
+    # Colorful Strands (a bonus puzzle): each theme word's color and emoji.
+    themeColors: Dict[str, str] | None = None
+    themeEmojis: Dict[str, str] | None = None
 
     def words(self) -> list:
         """Return the theme words and spangram (``nytgames.structure.StrandsWord``)
@@ -790,6 +796,96 @@ class WordlePuzzlesList(NYTModel):
 
 CrosswordGame.model_rebuild()
 ConnectionsLatest.model_rebuild()
+
+
+class WordleInOneRound(NYTModel):
+    """One round of Wordle in 1: a starting guess, and the only word that fits."""
+    start: str
+    solution: str
+
+
+class WordleInOnePuzzle(NYTModel):
+    """Wordle in 1, a weekly bonus puzzle: five rounds, each solved in one guess."""
+    id: int
+    slug: str
+    title: str | None = None
+    print_date: str
+    editor: str | None = None
+    stream: str | None = None
+    make_free: bool | None = None
+    rounds: List[WordleInOneRound]
+
+
+class WordleInOneGameData(NYTModel):
+    """Wordle in 1 Game Data (the user's saved progress)."""
+    currentRoundIndex: int | None = None
+    puzzleComplete: bool | None = None
+    rounds: List[WordleRound] = []
+    isPlayingArchive: bool | None = None
+
+    @property
+    def rounds_solved(self) -> int:
+        return sum(1 for r in self.rounds if r.complete)
+
+    @property
+    def seconds(self) -> float | None:
+        """Total solving time across rounds."""
+        return sum(r.timeMs or 0 for r in self.rounds) / 1000 if self.rounds else None
+
+
+class WordleInOneGameState(NYTModel):
+    """Wordle in 1 Game State."""
+    game: str
+    game_data: WordleInOneGameData
+    print_date: str = ""
+    puzzle_id: str
+    schema_version: str | None = None
+    timestamp: int | None = None
+    user_id: int
+    version: str | None = None
+
+
+class WordleInOneLatest(NYTModel):
+    """Wordle in 1 Game States."""
+    player: Player | None = None
+    states: List[WordleInOneGameState]
+    user_id: int
+    badges_trophy_shelf: TrophyShelf = []
+
+
+class BonusPuzzleListing(NYTModel):
+    """A puzzle in a week's Bonus Puzzles drop.
+
+    `game` is wordle-in-one, connections, strands or crossword, and
+    `variant` is standard, 3x3, colorful, mini, easy or monthly so far.
+    `slug` fetches Wordle in 1, Connections and Strands puzzles; crosswords
+    are fetched by `id`.
+    """
+    game: str
+    variant: str | None = None
+    title: str | None = None
+    subtitle: str | None = None
+    editors: List[str] = []
+    constructors: str | None = None
+    card_byline: str | None = None
+    make_free: bool | None = None
+    id: int
+    slug: str
+    web_url: str | None = None
+
+
+class BonusWeek(NYTModel):
+    """A week's Bonus Puzzles drop. Drops come out on Wednesdays.
+
+    `display_free` is true for weeks free to everyone (such as the first,
+    2026-08-26); other weeks are for subscribers on NYT's site.
+    """
+    drop_date: str
+    prev_drop: str | None = None
+    next_drop: str | None = None
+    display_free: bool | None = None
+    week_in_month: int | None = None
+    puzzles: List[BonusPuzzleListing] = []
 
 
 class WordleBotAnalysis(NYTModel):
